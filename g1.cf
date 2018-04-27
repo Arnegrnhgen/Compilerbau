@@ -1,23 +1,14 @@
 PDefs.   Program ::= [Def] ;
 
 DFunc.    Def    ::= Dtype Qid "(" [Arg] ")" "{" [Stm] "}" ;
-DProt.    Def    ::= Dtype Qid "(" [ProtArg] ")" ";" ;
-
-
-DUse.    Def    ::= Use;
-
-
+DProt.    Def    ::= Dtype Qid "(" [Arg] ")" ";" ;
+DUse.     Def    ::= Use;
 terminator Def "" ;
 
-ADecl.    Arg    ::= Dtype Qid ;
---AProtArg. ProtArg    ::= Dtype Qid ;
-AProtArg2. ProtArg    ::= Dtype ;
 
+ADecl1.    Arg    ::= Dtype Qid ;
+ADecl2.    Arg    ::= Dtype ;
 separator Arg "," ;
-separator ProtArg "," ;
-
-
-
 
 UUsing.         Use ::= "using" Qid ";" ;
 UNameSpace.     Use ::= "using" "namespace" Qid ";" ;
@@ -32,6 +23,7 @@ SReturn.     Stm ::= "return" Exp ";" ;
 SReturnVoid. Stm ::= "return" ";" ;
 SWhile.      Stm ::= "while" "(" Exp ")" Stm ;
 SFor.        Stm ::= "for" "(" Stm Exp ";" Exp ")" Stm ;
+SDoWhile.    Stm ::= "do" Stm "while" "(" Exp ")" ";" ;
 
 SBlock.      Stm ::= "{" [Stm] "}" ;
 SIf.         Stm ::= "if" "(" Exp ")" Stm ;
@@ -45,40 +37,20 @@ EInt.    Exp15  ::= Integer ;
 EDouble. Exp15  ::= Double ;
 EString. Exp15  ::= [String] ;
 EChar.   Exp15  ::= Char;
-
-DType.   Dtype  ::=  Type ;
-DQId.    Dtype  ::=  Qid  ;
-DDType1.  Dtype  ::= PreSpec Dtype ;
-DDType2.  Dtype  ::= Dtype PostSpec ;
-
-
-QId1.	 Qid	::= Id ;
-QId2.	 Qid	::= Qid "::" Qid ;
-
-QId3.	 Qid	::= Qid "<" [Dtype] ">" ;
-
-
-
 EQid.    Exp15  ::= Qid ;
 EApp.    Exp15  ::= Exp14 "(" [Exp] ")" ;
 EInd.    Exp15  ::= Exp15 "[" Exp "]" ;
-
 EDot.    Exp14  ::= Exp14 "." Qid ;
 EArrow.  Exp14  ::= Exp14 "->" Qid ;
 EDeRef.  Exp14  ::= "*" Exp15;
 ERef.    Exp14  ::= "&" Exp15;
-
 EPIncr.  Exp14  ::= Exp15 "++" ;
 EPDecr.  Exp14  ::= Exp15 "--" ;
-
 EIncr.   Exp13  ::= "++" Exp14 ;
 EDecr.   Exp13  ::= "--" Exp14 ;
 ENot.    Exp13  ::= "!" Exp14 ;
-
-EBAnd.  Exp12  ::= Exp12 "&"  Exp13 ;
-EBOr.   Exp12  ::= Exp12 "|"  Exp13 ;
-
-
+EBAnd.   Exp12  ::= Exp12 "&"  Exp13 ;
+EBOr.    Exp12  ::= Exp12 "|"  Exp13 ;
 ETimes.  Exp12  ::= Exp12 "*"  Exp13 ;
 EDiv.    Exp12  ::= Exp12 "/"  Exp13 ;
 EMod.    Exp12  ::= Exp12 "%"  Exp13 ;    
@@ -104,11 +76,19 @@ coercions Exp 15 ;
 
 separator Exp "," ;
 
+DType.   Dtype  ::=  Type ;
+DQId.    Dtype  ::=  Qid  ;
+DDType1.  Dtype  ::= PreSpec Dtype ;
+DDType2.  Dtype  ::= Dtype PostSpec ;
+
+QId1.	 Qid	::= Id ;
+QId2.	 Qid	::= Qid "::" Qid ;
+QId3.	 Qid	::= Qid "<" [Dtype] ">" ;
 separator Qid "," ;
+
 separator nonempty String "" ;
 separator PreSpec "" ;
 separator nonempty Dtype "," ;
-
 
 
 rules Type   ::= "bool" | "int" | "double" | "void" ;
