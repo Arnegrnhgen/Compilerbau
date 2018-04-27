@@ -1,14 +1,11 @@
 PDefs.   Program ::= [Def] ;
 
-DFunc.    Def    ::= Dtype Qid "(" [Arg] ")" "{" [Stm] "}" ;
-DProt.    Def    ::= Dtype Qid "(" [Arg] ")" ";" ;
-DUse.     Def    ::= Use;
+DFunc.    Def    ::= FDef ;
+DUse.     Def    ::= Use ;
+DDecl.    Def    ::= Decl ";" ;
+DSdecl.   Def    ::= Sdecl ";" ;
 terminator Def "" ;
 
-
-ADecl1.    Arg    ::= Dtype Qid ;
-ADecl2.    Arg    ::= Dtype ;
-separator Arg "," ;
 
 UUsing.         Use ::= "using" Qid ";" ;
 UNameSpace.     Use ::= "using" "namespace" Qid ";" ;
@@ -17,12 +14,12 @@ UType.          Use ::= "typedef" Dtype Id ";" ;
 
 SUse.        Stm ::= Use ;
 SExp.        Stm ::= Exp ";" ;
-SDecls.      Stm ::= Dtype [Qid] ";" ;
-SInit.       Stm ::= Dtype Qid "=" Exp ";" ;
+SDecl.       Stm ::= Decl ";" ;
+SSdecl.      Stm ::= Sdecl ";" ;
 SReturn.     Stm ::= "return" Exp ";" ;
 SReturnVoid. Stm ::= "return" ";" ;
 SWhile.      Stm ::= "while" "(" Exp ")" Stm ;
-SFor.        Stm ::= "for" "(" Stm Exp ";" Exp ")" Stm ;
+SFor.        Stm ::= "for" "(" Decl ";" Exp ";" Exp ")" Stm ;
 SDoWhile.    Stm ::= "do" Stm "while" "(" Exp ")" ";" ;
 
 SBlock.      Stm ::= "{" [Stm] "}" ;
@@ -30,6 +27,25 @@ SIf.         Stm ::= "if" "(" Exp ")" Stm ;
 SIfElse.     Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 
 terminator Stm "" ;
+
+
+DDec.        Decl ::= Dtype [Qid] ;
+DInit.       Decl ::= Dtype Qid "=" Exp ;
+terminator Decl ";" ;
+
+SDec.        Sdecl ::= "struct" Qid "{" [Decl] "}" ;
+
+
+FFunc.    FDef    ::= Dtype Qid "(" [Arg] ")" "{" [Stm] "}" ;
+FProt.    FDef    ::= Dtype Qid "(" [Arg] ")" ";" ;
+Fspec.    FDef    ::= "inline" FDef ;
+
+
+ADecl0.    Arg    ::= Dtype Qid "=" Exp ;
+ADecl1.    Arg    ::= Dtype Qid ;
+ADecl2.    Arg    ::= Dtype ;
+separator Arg "," ;
+
 
 ETrue.   Exp15  ::= "true" ;
 EFalse.  Exp15  ::= "false" ;
@@ -53,7 +69,7 @@ EBAnd.   Exp12  ::= Exp12 "&"  Exp13 ;
 EBOr.    Exp12  ::= Exp12 "|"  Exp13 ;
 ETimes.  Exp12  ::= Exp12 "*"  Exp13 ;
 EDiv.    Exp12  ::= Exp12 "/"  Exp13 ;
-EMod.    Exp12  ::= Exp12 "%"  Exp13 ;    
+EMod.    Exp12  ::= Exp12 "%"  Exp13 ;
 EPlus.   Exp11  ::= Exp11 "+"  Exp12 ;
 EMinus.  Exp11  ::= Exp11 "-"  Exp12 ;
 ELt.     Exp9   ::= Exp9  "<"  Exp10 ;
@@ -66,9 +82,11 @@ EAnd.    Exp4   ::= Exp4  "&&" Exp5 ;
 EOr.     Exp3   ::= Exp3  "||" Exp4 ;
 EShiftL. Exp3   ::= Exp3  "<<" Exp4 ;
 EShiftR. Exp3   ::= Exp3  ">>" Exp4 ;
+EAssp.   Exp2   ::= Exp3 "+=" Exp2 ;
+EAssm.   Exp2   ::= Exp3 "-=" Exp2 ;
 EAss.    Exp2   ::= Exp3 "=" Exp2 ;
 ETer.    Exp2   ::= Exp2 "?" Exp2 ":" Exp2 ;
-EExcept. Exp1   ::= "throw" Exp2;
+EExcept. Exp1   ::= "throw" Exp2 ;
 
 internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
 
@@ -76,30 +94,31 @@ coercions Exp 15 ;
 
 separator Exp "," ;
 
-DType.   Dtype  ::=  Type ;
-DQId.    Dtype  ::=  Qid  ;
-DDType1.  Dtype  ::= PreSpec Dtype ;
-DDType2.  Dtype  ::= Dtype PostSpec ;
-
-QId1.	 Qid	::= Id ;
-QId2.	 Qid	::= Qid "::" Qid ;
-QId3.	 Qid	::= Qid "<" [Dtype] ">" ;
-separator Qid "," ;
-
-separator nonempty String "" ;
-separator PreSpec "" ;
+DType.    Dtype3  ::= Type ;
+DQId.     Dtype3  ::= Qid  ;
+DDType1.  Dtype2  ::= PreSpec Dtype3 ;
+DDType2.  Dtype1  ::= Dtype2 PostSpec ;
 separator nonempty Dtype "," ;
+coercions Dtype 3 ;
+
+QId1.     Qid   ::= Id ;
+QId2.     Qid   ::= Qid "::" Qid ;
+QId3.     Qid   ::= Qid "<" [Dtype] ">" ;
+separator nonempty Qid "," ;
 
 
 rules Type   ::= "bool" | "int" | "double" | "void" ;
+rules FuncSpec ::= "inline" ;
 rules PreSpec ::= "const" ;
 rules PostSpec  ::= "&" | "*";
 
-token Id (letter (letter | digit | '_')*) ;
+separator nonempty String "" ;
+separator PreSpec "" ;
+separator FuncSpec "" ;
 
+token Id (letter (letter | digit | '_')*) ;
 
 
 comment "#" ;
 comment "//" ;
 comment "/*" "*/" ;
-
