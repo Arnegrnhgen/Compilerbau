@@ -1,16 +1,20 @@
 PDefs.   Program ::= [Def] ;
 
-DFun.    Def    ::= Dtype Qid "(" [Arg] ")" "{" [Stm] "}" ;
+DFunc.    Def    ::= Dtype Qid "(" [Arg] ")" "{" [Stm] "}" ;
+DProt.    Def    ::= Dtype Qid "(" [ProtArg] ")" ";" ;
+
 
 DUse.    Def    ::= Use;
 
 
 terminator Def "" ;
 
-ADecl.   Arg    ::= Dtype Qid ;
-
+ADecl.    Arg    ::= Dtype Qid ;
+--AProtArg. ProtArg    ::= Dtype Qid ;
+AProtArg2. ProtArg    ::= Dtype ;
 
 separator Arg "," ;
+separator ProtArg "," ;
 
 
 
@@ -27,6 +31,8 @@ SInit.       Stm ::= Dtype Qid "=" Exp ";" ;
 SReturn.     Stm ::= "return" Exp ";" ;
 SReturnVoid. Stm ::= "return" ";" ;
 SWhile.      Stm ::= "while" "(" Exp ")" Stm ;
+SFor.        Stm ::= "for" "(" Stm Exp ";" Exp ")" Stm ;
+
 SBlock.      Stm ::= "{" [Stm] "}" ;
 SIf.         Stm ::= "if" "(" Exp ")" Stm ;
 SIfElse.     Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
@@ -38,6 +44,7 @@ EFalse.  Exp15  ::= "false" ;
 EInt.    Exp15  ::= Integer ;
 EDouble. Exp15  ::= Double ;
 EString. Exp15  ::= [String] ;
+EChar.   Exp15  ::= Char;
 
 DType.   Dtype  ::=  Type ;
 DQId.    Dtype  ::=  Qid  ;
@@ -96,6 +103,7 @@ internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
 coercions Exp 15 ;
 
 separator Exp "," ;
+
 separator Qid "," ;
 separator nonempty String "" ;
 separator PreSpec "" ;
@@ -105,7 +113,7 @@ separator nonempty Dtype "," ;
 
 rules Type   ::= "bool" | "int" | "double" | "void" ;
 rules PreSpec ::= "const" ;
-rules PostSpec  ::= "&" | "*" | ;
+rules PostSpec  ::= "&" | "*";
 
 token Id (letter (letter | digit | '_')*) ;
 
