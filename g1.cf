@@ -47,25 +47,23 @@ ADecl2.    Arg    ::= Dtype ;
 separator Arg "," ;
 
 
-ETrue.   Exp15  ::= "true" ;
-EFalse.  Exp15  ::= "false" ;
-EInt.    Exp15  ::= Integer ;
-EDouble. Exp15  ::= Double ;
-EString. Exp15  ::= [String] ;
-EChar.   Exp15  ::= Char;
+ETrue.   Exp16  ::= "true" ;
+EFalse.  Exp16  ::= "false" ;
+EInt.    Exp16  ::= Integer ;
+EDouble. Exp16  ::= Double ;
+EString. Exp16  ::= [String] ;
+EChar.   Exp16  ::= Char ;
 EQid.    Exp15  ::= Qid ;
-EApp.    Exp15  ::= Exp14 "(" [Exp] ")" ;
+EApp.    Exp15  ::= Exp15 "(" [Exp] ")" ;
 EInd.    Exp15  ::= Exp15 "[" Exp "]" ;
-EDot.    Exp14  ::= Exp14 "." Qid ;
-EArrow.  Exp14  ::= Exp14 "->" Qid ;
-EDeRef.  Exp14  ::= "*" Exp15;
-ERef.    Exp14  ::= "&" Exp15;
+EDot.    Exp14  ::= Exp15 "." Exp14 ;
+EArrow.  Exp14  ::= Exp15 "->" Exp14 ;
+EDeRef.  Exp14  ::= "*" Exp14 ;
 EPIncr.  Exp14  ::= Exp15 "++" ;
 EPDecr.  Exp14  ::= Exp15 "--" ;
 EIncr.   Exp13  ::= "++" Exp14 ;
 EDecr.   Exp13  ::= "--" Exp14 ;
 ENot.    Exp13  ::= "!" Exp14 ;
-EBAnd.   Exp12  ::= Exp12 "&"  Exp13 ;
 EBOr.    Exp12  ::= Exp12 "|"  Exp13 ;
 ETimes.  Exp12  ::= Exp12 "*"  Exp13 ;
 EDiv.    Exp12  ::= Exp12 "/"  Exp13 ;
@@ -85,32 +83,38 @@ EShiftR. Exp3   ::= Exp3  ">>" Exp4 ;
 EAssp.   Exp2   ::= Exp3 "+=" Exp2 ;
 EAssm.   Exp2   ::= Exp3 "-=" Exp2 ;
 EAss.    Exp2   ::= Exp3 "=" Exp2 ;
-ETer.    Exp2   ::= Exp2 "?" Exp2 ":" Exp2 ;
+ETer.    Exp2   ::= Exp3 "?" Exp2 ":" Exp2 ;
 EExcept. Exp1   ::= "throw" Exp2 ;
 
-internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
+--internal ETyped. Exp16 ::= "(" Exp ":" Type ")" ;
 
-coercions Exp 15 ;
+coercions Exp 16 ;
 
 separator Exp "," ;
 
-DType.    Dtype3  ::= Type ;
-DQId.     Dtype3  ::= Qid  ;
-DDType1.  Dtype2  ::= PreSpec Dtype3 ;
-DDType2.  Dtype1  ::= Dtype2 PostSpec ;
-separator nonempty Dtype "," ;
-coercions Dtype 3 ;
+DType.    Drtype  ::= Type ;
+DQid.     Drtype  ::= Qid ;
 
-QId1.     Qid   ::= Id ;
-QId2.     Qid   ::= Qid "::" Qid ;
-QId3.     Qid   ::= Qid "<" [Dtype] ">" ;
+DRaw.     Dstype  ::= Drtype ;
+Dspec.    Dstype  ::= PreSpec Drtype ;
+
+DDType1.  Dtype  ::= Dstype ;
+DDType2.  Dtype  ::= Dstype PostSpec ;
+separator nonempty Dtype "," ;
+
+
+QId.     Qid   ::= [Name] ;
 separator nonempty Qid "," ;
 
+
+NId.      Name ::= Id ;
+NTempl.   Name ::= Id "<" [Dtype] ">" ;
+separator nonempty Name "::" ;
 
 rules Type   ::= "bool" | "int" | "double" | "void" ;
 rules FuncSpec ::= "inline" ;
 rules PreSpec ::= "const" ;
-rules PostSpec  ::= "&" | "*";
+rules PostSpec  ::= "&" ;
 
 separator nonempty String "" ;
 separator PreSpec "" ;
