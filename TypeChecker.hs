@@ -5,30 +5,43 @@ import PrintCPP
 import ErrM
 import qualified Data.Map as Map
 
-data Context = Con [Type] (Map.Map String  (Type, [Arg]) ) deriving (Show)
+data Context = Con (Map.Map String [Field] )   (Map.Map String  (Type, [Arg]) ) deriving (Show)
+
+checkfunctypes ::  [String] -> [String] -> String
+checkfunctypes [] types = ""
+checkfunctypes (t:args) types = (if (elem t types ) then "" else "type not found: " ++ t ++ "\n") ++ checkfunctypes args types
 
 
-add2context :: (Map.Map String  (Type, [Arg]) ) -> String -> (Type, [Arg]) -> (Map.Map String  (Type, [Arg]) )
-add2context m name t = Map.insert name t m
-
-checkdef :: Def -> Context -> (Bool,Context,String)
-checkdef (DFun t (Id i) args _) (Con types m)= (elem t types ,Con types (Map.insert i (t,args) m) , "Type not found: '"++show t++"'")
-
-checkdef (DStruct i _ ) (Con types m)= (True, Con (types ++ [TypeId i]) m,"")
+  --foldl (++) "" ["type not found: " ++ x ++ "\n" |TypeId (Id x) <- [ x | x<- t:[t2 | ( ADecl t2 _ ) <- args ],not (x `elem` types)] ]
 
 
+checkdef :: Def -> Context -> String
+checkdef (DFun t (Id "main") args _) (Con types _) =  (if (not (t == Type_int)) then "main() must return int\n"  else "") ++
+                                                      (if (not (null args))     then "main() must not take any parameters\n" else "") ++
+                                                      checkfunctypes [t2 | (ADecl (TypeId (Id t2)) _) <- (ADecl t (Id "")):args] (Map.keys types)
 
-checkdefs :: [Def] -> Context -> Err ()
-checkdefs [] _ = return ()
-checkdefs (d:defs) types  = if b
-                             then (checkdefs defs types2)
-                             else fail (show types2)
-                              where
-                                (b, types2, msg) = checkdef d types
+
+checkdef (DFun t _ args _) (Con types _)           =  checkfunctypes [t2 | (ADecl (TypeId (Id t2)) _) <- (ADecl t (Id "")):args] (Map.keys types)
+
+
+checkdef (DStruct _ fields) (Con types _) = checkfunctypes [t | (FDecl (TypeId (Id t)) _) <- fields] (Map.keys types)
+
+regdef :: Def -> Context -> Context
+regdef (DFun t (Id i) args _) (Con types m) = Con types (Map.insert i (t,args) m)
+regdef (DStruct (Id i) fields ) (Con types m)= (Con (Map.insert i fields types) m)
+
+
+
+checkdefs :: [Def] -> Context -> (String,Context)
+checkdefs [] context = ("",context)
+checkdefs (d:defs) context  = (checkdef d context ++ msg , context2)
+                                where (msg,context2 ) = (checkdefs defs (regdef d context) )
 
 typecheck :: Program -> Err ()
 
-typecheck (PDefs defs) = checkdefs defs (Con [Type_bool, Type_int, Type_double, Type_void] (Map.fromList []) )
+typecheck (PDefs defs) = case checkdefs defs (Con (Map.fromList []) (Map.fromList []) ) of
+                              ("", context) -> fail (show context)
+                              (msg, context) -> fail (msg ++ (show context))
 
 
 --(foldl (++) "" ["."| a <- (p . PDefs) ])
