@@ -12,3 +12,5 @@ PrintCPP.hs
 SkelCPP.hs
 TestCPP.hs
 lab2
+
+testsuite/progs-test-lab2
