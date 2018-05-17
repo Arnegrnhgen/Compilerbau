@@ -129,12 +129,12 @@ inferExpr _ (EInt _) = return Type_int
 inferExpr _ (EDouble _) = return Type_double
 inferExpr env (EId ident) = lookupVarEnv env ident
 inferExpr env (EApp ident exprs) = lookupFunEnv env ident >>= checkFunArgs env exprs
-inferExpr env (EProj (EId lhs) (EId rhs)) = lookupVarEnv env lhs >>= lookUpStructField env rhs
+inferExpr env (EProj (EId lhs) (EId rhs)) = lookupVarEnv env lhs >>= lookUpStructField env rhs --TODO allow a.b.c
 inferExpr _ (EProj l r) = fail $ "invalid struct usage " ++ printTree l ++ "." ++ printTree r
-inferExpr env (EPIncr expr) = inferExpr env expr
-inferExpr env (EPDecr expr) = inferExpr env expr
-inferExpr env (EIncr expr) = inferExpr env expr
-inferExpr env (EDecr expr) = inferExpr env expr
+inferExpr env (EPIncr expr) = inferExpr env expr --TODO: allow only int, double
+inferExpr env (EPDecr expr) = inferExpr env expr --TODO: allow only int, double
+inferExpr env (EIncr expr) = inferExpr env expr --TODO: allow only int, double
+inferExpr env (EDecr expr) = inferExpr env expr --TODO: allow only int, double
 inferExpr env (ETimes exp1 exp2) = inferNumBin env exp1 exp2
 inferExpr env (EDiv exp1 exp2) = inferNumBin env exp1 exp2
 inferExpr env (EPlus exp1 exp2) = inferNumBin env exp1 exp2
@@ -143,8 +143,8 @@ inferExpr env (ELt exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
 inferExpr env (EGt exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
 inferExpr env (ELtEq exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
 inferExpr env (EGtWq exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
-inferExpr env (EEq exp1 exp2) = inferBin [Type_int, Type_double, Type_bool] env exp1 exp2 >> return Type_bool
-inferExpr env (ENEq exp1 exp2) = inferBin [Type_int, Type_double, Type_bool] env exp1 exp2 >> return Type_bool
+inferExpr env (EEq exp1 exp2) = inferBin [Type_int, Type_double, Type_bool] env exp1 exp2 >> return Type_bool --TODO:allow int double comparison
+inferExpr env (ENEq exp1 exp2) = inferBin [Type_int, Type_double, Type_bool] env exp1 exp2 >> return Type_bool --TODO:allow int double comparison
 inferExpr env (EAnd exp1 exp2) = inferBin [Type_bool] env exp1 exp2 >> return Type_bool
 inferExpr env (EOr exp1 exp2) = inferBin [Type_bool] env exp1 exp2 >> return Type_bool
 inferExpr env (EPrAss structname membername value) = do
@@ -178,9 +178,11 @@ checkStm env (SExp e) = do
 checkStm env (SInit t i e) = do
                                checkTypeExists env t
                                checkExpType env t e
+                               --TODO: check if ident exists already
                                return $ insertVarEnv env t i
 checkStm env (SDecls t ids) = do
                                 checkTypeExists env t
+                                --TODO: check if ident exists already
                                 return $ insertVarsEnv env t ids
 checkStm env (SWhile e s) = do
                               conditionType <- inferExpr env e
