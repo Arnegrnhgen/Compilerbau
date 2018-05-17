@@ -194,13 +194,10 @@ envNewBlock (sigs,c,structs) = Ok (sigs, [Map.fromList []] ++ c,structs)
 envPopBlock :: Env -> Err Env
 envPopBlock (sigs,c,structs) = Ok (sigs, tail c, structs)
 
-foldStm :: Err Env -> [Stm] -> Err Env
-foldStm (Bad msg) _ = Bad msg
-foldStm (Ok env) [] = Ok env
-foldStm (Ok env) (s:stms) = foldStm (checkStm env s) stms
 
 checkStms :: Env -> [Stm] -> Err Env
-checkStms env stms = foldStm (Ok env) stms --TODO foldM
+checkStms env stms = foldM checkStm env stms
+
 
 checkDef :: Env -> Def -> Err Env
 checkDef env (DFun rettype name args stmts) = do
