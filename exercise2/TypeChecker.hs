@@ -28,26 +28,31 @@ lookupCtx (ctx:ctxs) ident = case (Map.lookup ident ctx) of
 
 
 lookupVarEnv :: Env -> Id -> Err Type
-lookupVarEnv (sigs,ctxs,_) ident = lookupCtx ctxs ident
+lookupVarEnv (_,ctxs,_) ident = lookupCtx ctxs ident
 
 
-lookupSigs :: Sigs -> Id -> [Exp] -> Err ([Type], Type)
-lookupSigs sigs (Id str) args = case (Map.lookup (Id str) sigs) of
+lookupSigs :: Sigs -> Id -> Err ([Type], Type)
+lookupSigs sigs (Id str) = case (Map.lookup (Id str) sigs) of
                                   Nothing -> fail $ "function identifier " ++ str ++ " not found"
                                   Just x -> return x
 
 
-lookupFunEnv :: Env -> Id -> [Exp] -> Err ([Type], Type)
-lookupFunEnv (sigs,ctxs,_) ident args = lookupSigs sigs ident args
+lookupFunEnv :: Env -> Id -> Err ([Type], Type)
+lookupFunEnv (sigs,_,_) ident = lookupSigs sigs ident
+
+
+compareArgs :: (Env,Integer) -> (Exp,Type) -> Err (Env,Integer)
+compareArgs (env,i) (expr,t) = do
+                                 t2 <- inferExpr env expr
+                                 when (t /= t2) $ fail $ "function argument number " ++ show i ++ " type mismatch: " ++ printTree t ++ " vs " ++ printTree t2
+                                 return (env,i+1)
 
 
 checkFunArgs :: Env -> [Exp] -> ([Type],Type) -> Err Type
-checkFunArgs env exps (args,rettype) = foldM compareArgs rettype (zip exps args) --TODO: check same length
-    where
-                    compareArgs rtype (expr,t) = do
-                                                   t2 <- inferExpr env expr
-                                                   when (t /= t2) $ fail $ "function argument type mismatch: " ++ printTree t ++ " vs " ++ printTree t2
-                                                   return rtype
+checkFunArgs env exps (args,rettype) = do
+                                         when (length exps /= length args) $ fail $ "bad number of function arguments (" ++ show (length exps) ++ " vs " ++ show (length args) ++ ")"
+                                         _ <- foldM compareArgs (env,1) (zip exps args) --TODO: check same length
+                                         return rettype
 
 
 insertVarEnv :: Env -> Type -> Id -> Env
@@ -56,12 +61,13 @@ insertVarEnv (sigs,(c:ctxs),structs) t i = (sigs,(Map.insert i t c) : ctxs,struc
 
 
 insertVarsEnv :: Env -> Type -> [Id] -> Env
-insertVarsEnv env t [] = env
+insertVarsEnv env _ [] = env
 insertVarsEnv env t (i:is) = insertVarsEnv (insertVarEnv env t i) t is
 
 
 insertFunVar :: Env -> Arg -> Env
 insertFunVar (sigs,(c:ctxs),structs) (ADecl t i) = (sigs, (Map.insert i t c) : ctxs,structs)
+insertFunVar (_, [], _) _ = error "function insert into empty context"
 
 
 insertFunVars :: Env -> [Arg] -> Err Env
@@ -70,20 +76,20 @@ insertFunVars env (a:args) = insertFunVars (insertFunVar env a) args
 
 
 lookUpStructField :: Env -> Id -> Type -> Err Type
-lookUpStructField (sigs,ctxs,structs) membername (TypeId structname) = case Map.lookup structname structs of
+lookUpStructField (_,_,structs) membername (TypeId structname) = case Map.lookup structname structs of
                                                                          Nothing -> fail $ "struct " ++ show structname ++ " not found"
                                                                          Just struct -> case Map.lookup membername struct of
                                                                                           Nothing -> fail $ "struct member " ++ show membername ++ " of struct " ++ show structname ++ " not found"
                                                                                           Just field -> return field
-lookUpStructField (sigs,ctxs,structs) membername structname = fail $ "identifier " ++ printTree structname ++ " not a struct name"
+lookUpStructField (_,_,_) _ structname = fail $ "identifier " ++ printTree structname ++ " not a struct name"
 
 
-checkExpType :: Env -> Type -> Exp -> Err Type
+checkExpType :: Env -> Type -> Exp -> Err ()
 checkExpType env typ expr = do
                               typ2 <- inferExpr env expr
                               if typ2 == typ
                                 then
-                                  return typ
+                                  return ()
                                 else
                                   fail $ "type of " ++ printTree expr ++ " expected " ++ printTree typ ++ " but found " ++ printTree typ2
 
@@ -93,7 +99,9 @@ inferBin types env exp1 exp2 = do
                                  typ <- inferExpr env exp1
                                  if elem typ types
                                    then
-                                     checkExpType env typ exp2
+                                     do
+                                       checkExpType env typ exp2
+                                       return typ
                                    else
                                      fail $ "wrong type of expression " ++ printTree exp1
 
@@ -106,23 +114,23 @@ inferNumBin env exp1 exp2 = do
                                 Type_int -> case type2 of
                                               Type_int -> return Type_int
                                               Type_double -> return Type_double
-                                              otherwise -> fail $ "wrong type of second numeric expression " ++ printTree exp2
+                                              _ -> fail $ "wrong type of second numeric expression " ++ printTree exp2
                                 Type_double -> case type2 of
                                                  Type_int -> return Type_double
                                                  Type_double -> return Type_double
-                                                 otherwise -> fail $ "wrong type of second numeric expression " ++ printTree exp2
-                                otherwise -> fail $ "wrong type of first numeric expression " ++ printTree exp1
+                                                 _ -> fail $ "wrong type of second numeric expression " ++ printTree exp2
+                                _ -> fail $ "wrong type of first numeric expression " ++ printTree exp1
 
 
 inferExpr :: Env -> Exp -> Err Type
-inferExpr env ETrue = return Type_bool
-inferExpr env EFalse = return Type_bool
-inferExpr env (EInt _) = return Type_int
-inferExpr env (EDouble _) = return Type_double
+inferExpr _ ETrue = return Type_bool
+inferExpr _ EFalse = return Type_bool
+inferExpr _ (EInt _) = return Type_int
+inferExpr _ (EDouble _) = return Type_double
 inferExpr env (EId ident) = lookupVarEnv env ident
-inferExpr env (EApp ident exprs) = lookupFunEnv env ident exprs >>= checkFunArgs env exprs
+inferExpr env (EApp ident exprs) = lookupFunEnv env ident >>= checkFunArgs env exprs
 inferExpr env (EProj (EId lhs) (EId rhs)) = lookupVarEnv env lhs >>= lookUpStructField env rhs
-inferExpr env (EProj l r) = fail $ "invalid struct usage " ++ printTree l ++ "." ++ printTree r
+inferExpr _ (EProj l r) = fail $ "invalid struct usage " ++ printTree l ++ "." ++ printTree r
 inferExpr env (EPIncr expr) = inferExpr env expr
 inferExpr env (EPDecr expr) = inferExpr env expr
 inferExpr env (EIncr expr) = inferExpr env expr
@@ -145,27 +153,27 @@ inferExpr env (EPrAss structname membername value) = do
                                                        when (lhs /= rhs) $ fail $ "bad struct assignment from " ++ printTree value ++ " to " ++ printTree lhs
                                                        return lhs
 inferExpr env (EAss lhs rhs) = do
-                                 lhs <- inferExpr env lhs
-                                 rhs <- inferExpr env rhs
-                                 when (lhs /= rhs) $ fail $ "bad assignment from " ++ printTree rhs ++ " to " ++ printTree lhs
-                                 return lhs
+                                 typlhs <- inferExpr env lhs
+                                 typrhs <- inferExpr env rhs
+                                 when (typlhs /= typrhs) $ fail $ "bad assignment from " ++ printTree rhs ++ " to " ++ printTree lhs ++ " (" ++ printTree typrhs ++ " to " ++ printTree typlhs ++ ")"
+                                 return typlhs
 
 
 checkTypeExists :: Env -> Type -> Err ()
-checkTypeExists (sigs,ctxs,structs) typ = case typ of
+checkTypeExists (_,_,structs) typ = case typ of
                                             TypeId ident -> case Map.lookup ident structs of
                                                               Nothing -> fail $ "bad datatype " ++ printTree ident
-                                                              otherwise -> return ()
-                                            otherwise -> return ()
+                                                              _ -> return ()
+                                            _ -> return ()
 
 
 checkStm :: Env -> Stm -> Err Env
 checkStm env (SReturn e) = do
-                             rettype <- inferExpr env e
+                             _ <- inferExpr env e
                               --TODO: check with function signature
                              return env
 checkStm env (SExp e) = do
-                          inferExpr env e
+                          _ <- inferExpr env e
                           return env
 checkStm env (SInit t i e) = do
                                checkTypeExists env t
@@ -211,7 +219,7 @@ checkStms env stms = foldM checkStm env stms
 
 
 checkDef :: Env -> Def -> Err Env
-checkDef env (DFun rettype name args stmts) = do
+checkDef env (DFun _ _ args stmts) = do
                                                  env2 <- envNewBlock env
                                                  env3 <- insertFunVars env2 args
                                                  env4 <- checkStms env3 stmts
@@ -223,7 +231,7 @@ checkDef (sigs, ctxs, structs) (DStruct ident fields) = do
                                                           case Map.lookup ident structs of
                                                             Nothing -> return (sigs, ctxs, Map.insert ident f structs)
                                                                          where f = Map.fromList [(i,t) | (FDecl t i) <- fields]
-                                                            Just x -> fail $ "struct " ++ printTree ident ++ " already defined"
+                                                            Just _ -> fail $ "struct " ++ printTree ident ++ " already defined"
 
 
 checkDefs :: Env -> [Def] -> Err Env
@@ -240,7 +248,7 @@ extendSigs (sigs,var,structs) (DFun returntype i args _) = do
                                                              case Map.lookup i sigs of
                                                                Nothing -> return (Map.insert i (argtypes,returntype) sigs,var,structs)
                                                                             where argtypes = [t | ADecl t _ <- args]
-                                                               Just x -> fail $ "function " ++ printTree i ++ " already defined"
+                                                               Just _ -> fail $ "function " ++ printTree i ++ " already defined"
 extendSigs env (DStruct _ _) = return env
 
 
