@@ -16,9 +16,6 @@ type Struct = Map.Map Id Type
 
 {-
     TODO:
-        finish checkstm
-            - eval expr
-            - extend context
         check function returntype
         use printTree
 -}
@@ -150,18 +147,48 @@ inferExpr env (EAss lhs rhs) = do
                                 if lhs == rhs then return lhs else Bad ("bad assignment from " ++ show rhs ++ " to " ++ show lhs)
 
 
+checkTypeExists :: Env -> Type -> Err ()
+checkTypeExists (sigs,ctxs,structs) typ = case typ of
+                                            TypeId ident -> case Map.lookup ident structs of
+                                                              Nothing -> fail $ "bad datatype " ++ printTree ident
+                                                              otherwise -> return ()
+                                            otherwise -> return ()
+
+
 checkStm :: Env -> Stm -> Err Env
 checkStm env (SReturn e) = Ok env --TODO
-checkStm env (SExp e) = case (inferExpr env e) of
-                             Bad msg -> Bad msg
-                             Ok _ -> Ok env
-checkStm env (SInit t i e) = Ok (insertVarEnv env t i) -- TODO: check e:type == t and if t exists
-checkStm env (SDecls t ids) = Ok (insertVarsEnv env t ids) --TODO: check if t exists
-checkStm env (SWhile e s)
-                       | inferExpr env e /= Ok Type_bool = Bad ("condition " ++ show e ++ " in while: expected bool, found " ++ show (inferExpr env e))
-                       | otherwise = Ok env --TODO: check inner block
-checkStm env (SBlock ss) = Ok env --TODO
-checkStm env (SIfElse e s1 s2) = Ok env --TODO
+checkStm env (SExp e) = do
+                          inferExpr env e
+                          return env
+checkStm env (SInit t i e) = do
+                               checkTypeExists env t
+                               checkExpType env t e
+                               return $ insertVarEnv env t i
+checkStm env (SDecls t ids) = do
+                                checkTypeExists env t
+                                return $ insertVarsEnv env t ids
+checkStm env (SWhile e s) = do
+                              conditionType <- inferExpr env e
+                              when (conditionType /= Type_bool) $ fail $ "bad condition type " ++ printTree e ++ " in while: expected bool, found " ++ printTree conditionType
+                              innerEnv <- envNewBlock env
+                              innerEnv2 <- checkStm innerEnv s
+                              env2 <- envPopBlock innerEnv2
+                              return env2
+checkStm env (SBlock ss) = do
+                             innerEnv <- envNewBlock env
+                             innerEnv2 <- checkStms innerEnv ss
+                             env2 <- envPopBlock innerEnv2
+                             return env2
+checkStm env (SIfElse e s1 s2) = do
+                                   conditionType <- inferExpr env e
+                                   when (conditionType /= Type_bool) $ fail $ "bad condition type " ++ printTree e ++ " in if: expected bool, found " ++ printTree conditionType
+                                   innerEnv1 <- envNewBlock env
+                                   innerEnv2 <- checkStm innerEnv1 s1
+                                   env2 <- envPopBlock innerEnv2
+                                   innerEnv3 <- envNewBlock env2
+                                   innerEnv4 <- checkStm innerEnv3 s2
+                                   env3 <- envPopBlock innerEnv4
+                                   return env3
 
 
 envNewBlock :: Env -> Err Env
