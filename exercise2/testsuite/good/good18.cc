@@ -33,6 +33,6 @@ int main() {
 	b = x > y ;
 	b = x >= y ;
 	b = x == y ;
-	data2.d = d;
-	data2.d.i = x;
+	d2.d = d;
+	d2.d.i = x;
 }
