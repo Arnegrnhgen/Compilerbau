@@ -106,6 +106,7 @@ inferNumBin env exp1 exp2 = do
                                 Type_int -> case type2 of
                                               Type_int -> return Type_int
                                               Type_double -> return Type_double
+                                              otherwise -> fail $ "wrong type of second numeric expression " ++ printTree exp2
                                 Type_double -> case type2 of
                                                  Type_int -> return Type_double
                                                  Type_double -> return Type_double
@@ -159,7 +160,10 @@ checkTypeExists (sigs,ctxs,structs) typ = case typ of
 
 
 checkStm :: Env -> Stm -> Err Env
-checkStm env (SReturn e) = Ok env --TODO
+checkStm env (SReturn e) = do
+                             rettype <- inferExpr env e
+                              --TODO: check with function signature
+                             return env
 checkStm env (SExp e) = do
                           inferExpr env e
                           return env
