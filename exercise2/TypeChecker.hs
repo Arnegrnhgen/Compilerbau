@@ -127,6 +127,20 @@ inferBin types env exp1 exp2 = do
                                        else
                                          fail $ "wrong type of expression " ++ printTree exp1
 
+inferNumBin :: Env -> Exp -> Exp -> Err Type
+inferNumBin env exp1 exp2 = do
+                              type1 <- inferExpr env exp1
+                              type2 <- inferExpr env exp2
+                              case type1 of
+                                Type_int -> case type2 of
+                                              Type_int -> return Type_int
+                                              Type_double -> return Type_double
+                                Type_double -> case type2 of
+                                                 Type_int -> return Type_double
+                                                 Type_double -> return Type_double
+                                                 otherwise -> fail $ "wrong type of second numeric expression " ++ printTree exp2
+                                otherwise -> fail $ "wrong type of first numeric expression " ++ printTree exp1
+
 inferExpr :: Env -> Exp -> Err Type
 inferExpr env ETrue = Ok Type_bool
 inferExpr env EFalse = Ok Type_bool
@@ -140,14 +154,14 @@ inferExpr env (EPIncr expr) = inferExpr env expr
 inferExpr env (EPDecr expr) = inferExpr env expr
 inferExpr env (EIncr expr) = inferExpr env expr
 inferExpr env (EDecr expr) = inferExpr env expr
-inferExpr env (ETimes exp1 exp2) = inferNumBin [Type_int, Type_double] env exp1 exp2
-inferExpr env (EDiv exp1 exp2) = inferNumBin [Type_int, Type_double] env exp1 exp2
-inferExpr env (EPlus exp1 exp2) = inferNumBin [Type_int, Type_double] env exp1 exp2
-inferExpr env (EMinus exp1 exp2) = inferNumBin [Type_int, Type_double] env exp1 exp2
-inferExpr env (ELt exp1 exp2) = inferNumBin [Type_int, Type_double] env exp1 exp2 >> return Type_bool
-inferExpr env (EGt exp1 exp2) = inferNumBin [Type_int, Type_double] env exp1 exp2 >> return Type_bool
-inferExpr env (ELtEq exp1 exp2) = inferNumBin [Type_int, Type_double] env exp1 exp2 >> return Type_bool
-inferExpr env (EGtWq exp1 exp2) = inferNumBin [Type_int, Type_double] env exp1 exp2 >> return Type_bool
+inferExpr env (ETimes exp1 exp2) = inferNumBin env exp1 exp2
+inferExpr env (EDiv exp1 exp2) = inferNumBin env exp1 exp2
+inferExpr env (EPlus exp1 exp2) = inferNumBin env exp1 exp2
+inferExpr env (EMinus exp1 exp2) = inferNumBin env exp1 exp2
+inferExpr env (ELt exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
+inferExpr env (EGt exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
+inferExpr env (ELtEq exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
+inferExpr env (EGtWq exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
 inferExpr env (EEq exp1 exp2) = inferBin [Type_int, Type_double, Type_bool] env exp1 exp2 >> return Type_bool
 inferExpr env (ENEq exp1 exp2) = inferBin [Type_int, Type_double, Type_bool] env exp1 exp2 >> return Type_bool
 inferExpr env (EAnd exp1 exp2) = inferBin [Type_bool] env exp1 exp2 >> return Type_bool
