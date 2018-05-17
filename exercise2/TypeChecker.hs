@@ -225,9 +225,12 @@ newEnv = (Map.fromList builtIns, [], Map.fromList [] )
 
 
 
-extendSigs :: Env -> Def -> Err Env -- TODO: failure cases (duplicate definition, ...)
-extendSigs (sigs,var,structs) (DFun returntype i args _) = return (Map.insert i (argtypes,returntype) sigs,var,structs)
-                                        where argtypes = [t | ADecl t _ <- args]
+extendSigs :: Env -> Def -> Err Env
+extendSigs (sigs,var,structs) (DFun returntype i args _) = do
+                                                             case Map.lookup i sigs of
+                                                               Nothing -> return (Map.insert i (argtypes,returntype) sigs,var,structs)
+                                                                            where argtypes = [t | ADecl t _ <- args]
+                                                               Just x -> fail $ "function " ++ printTree i ++ " already defined"
 extendSigs env (DStruct _ _) = return env
 
 typecheck :: Program -> Err Env
