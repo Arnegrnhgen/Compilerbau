@@ -211,18 +211,21 @@ checkDef env (DFun rettype name args stmts) = do
                                                  env5 <- envPopBlock env4
                                                  return env5
 
-checkDef (sigs, ctxs, structs) (DStruct ident fields) = return (sigs, ctxs, Map.insert ident f structs)
-    where f = Map.fromList [(i,t) | (FDecl t i) <- fields]
+checkDef (sigs, ctxs, structs) (DStruct ident fields) = do
+                                                          case Map.lookup ident structs of
+                                                            Nothing -> return (sigs, ctxs, Map.insert ident f structs)
+                                                                         where f = Map.fromList [(i,t) | (FDecl t i) <- fields]
+                                                            Just x -> fail $ "struct " ++ printTree ident ++ " already defined"
 
 
 checkDefs :: Err Env -> [Def] -> Err Env
 checkDefs (Bad msg) _   = Bad msg
 checkDefs (Ok env) defs = foldM checkDef env defs
 
+
 newEnv :: Env
 newEnv = (Map.fromList builtIns, [], Map.fromList [] )
     where builtIns = [(Id "printInt",([Type_int], Type_void)), (Id "printDouble",([Type_double], Type_void)), (Id "readInt",([], Type_int)), (Id "readDouble",([], Type_double))]
-
 
 
 extendSigs :: Env -> Def -> Err Env
@@ -232,6 +235,7 @@ extendSigs (sigs,var,structs) (DFun returntype i args _) = do
                                                                             where argtypes = [t | ADecl t _ <- args]
                                                                Just x -> fail $ "function " ++ printTree i ++ " already defined"
 extendSigs env (DStruct _ _) = return env
+
 
 typecheck :: Program -> Err Env
 typecheck (PDefs defs) = checkDefs (foldM extendSigs newEnv defs) defs
