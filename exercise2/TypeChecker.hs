@@ -31,14 +31,10 @@ lookupVarEnv :: Env -> Id -> Err Type
 lookupVarEnv (_,ctxs,_) = lookupCtx ctxs
 
 
-lookupSigs :: Sigs -> Id -> Err ([Type], Type)
-lookupSigs sigs (Id str) = case Map.lookup (Id str) sigs of
-                             Nothing -> fail $ "function identifier " ++ str ++ " not found"
-                             Just x -> return x
-
-
 lookupFunEnv :: Env -> Id -> Err ([Type], Type)
-lookupFunEnv (sigs,_,_) = lookupSigs sigs
+lookupFunEnv (sigs, _, _) ident = case Map.lookup ident sigs of
+                                    Nothing -> fail $ "function identifier " ++ printTree ident ++ " not found"
+                                    Just x -> return x
 
 
 compareArgs :: (Env,Integer) -> (Exp,Type) -> Err (Env,Integer)
