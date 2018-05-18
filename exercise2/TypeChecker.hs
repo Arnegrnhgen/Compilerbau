@@ -51,7 +51,7 @@ compareArgs (env,i) (expr,t) = do
 checkFunArgs :: Env -> [Exp] -> ([Type],Type) -> Err Type
 checkFunArgs env exps (args,rettype) = do
                                          when (length exps /= length args) $ fail $ "bad number of function arguments (" ++ show (length exps) ++ " vs " ++ show (length args) ++ ")"
-                                         _ <- foldM compareArgs (env,1) (zip exps args) --TODO: check same length
+                                         _ <- foldM compareArgs (env,1) (zip exps args)
                                          return rettype
 
 
@@ -223,7 +223,7 @@ checkStms env stms = foldM checkStm env stms
 checkDef :: Env -> Def -> Err Env
 checkDef env (DFun _ _ args stmts) = do
                                                  env2 <- envNewBlock env
-                                                 env3 <- insertFunVars env2 args
+                                                 env3 <- insertFunVars env2 args --TODO: check for unique arguments, e.g. "void foo(int i, double i){}"
                                                  env4 <- checkStms env3 stmts
                                                  --TODO: iterate over stmts if return has correct type
                                                  env5 <- envPopBlock env4
@@ -233,6 +233,7 @@ checkDef (sigs, ctxs, structs) (DStruct ident fields) = do
                                                           case Map.lookup ident structs of
                                                             Nothing -> return (sigs, ctxs, Map.insert ident f structs)
                                                                          where f = Map.fromList [(i,t) | (FDecl t i) <- fields]
+                                                                         --TODO: check fields are name unique, e.g "struct s { int i; double i; };"
                                                             Just _ -> fail $ "struct " ++ printTree ident ++ " already defined"
 
 
