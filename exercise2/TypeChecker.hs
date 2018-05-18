@@ -22,23 +22,23 @@ type Struct = Map.Map Id Type
 
 lookupCtx :: [Context] -> Id -> Err Type
 lookupCtx [] (Id str) = fail $ "identifier " ++ str ++ " not found"
-lookupCtx (ctx:ctxs) ident = case (Map.lookup ident ctx) of
+lookupCtx (ctx:ctxs) ident = case Map.lookup ident ctx of
                                Nothing -> lookupCtx ctxs ident
                                Just x -> return x
 
 
 lookupVarEnv :: Env -> Id -> Err Type
-lookupVarEnv (_,ctxs,_) ident = lookupCtx ctxs ident
+lookupVarEnv (_,ctxs,_) = lookupCtx ctxs
 
 
 lookupSigs :: Sigs -> Id -> Err ([Type], Type)
-lookupSigs sigs (Id str) = case (Map.lookup (Id str) sigs) of
-                                  Nothing -> fail $ "function identifier " ++ str ++ " not found"
-                                  Just x -> return x
+lookupSigs sigs (Id str) = case Map.lookup (Id str) sigs of
+                             Nothing -> fail $ "function identifier " ++ str ++ " not found"
+                             Just x -> return x
 
 
 lookupFunEnv :: Env -> Id -> Err ([Type], Type)
-lookupFunEnv (sigs,_,_) ident = lookupSigs sigs ident
+lookupFunEnv (sigs,_,_) = lookupSigs sigs
 
 
 compareArgs :: (Env,Integer) -> (Exp,Type) -> Err (Env,Integer)
@@ -51,13 +51,13 @@ compareArgs (env,i) (expr,t) = do
 checkFunArgs :: Env -> [Exp] -> ([Type],Type) -> Err Type
 checkFunArgs env exps (args,rettype) = do
                                          when (length exps /= length args) $ fail $ "bad number of function arguments (" ++ show (length exps) ++ " vs " ++ show (length args) ++ ")"
-                                         _ <- foldM compareArgs (env,1) (zip exps args)
+                                         foldM_ compareArgs (env,1) (zip exps args)
                                          return rettype
 
 
 insertVarEnv :: Env -> Type -> Id -> Env
-insertVarEnv (sigs,[],structs) t i       = (sigs,([Map.fromList [(i,t)]]),structs)
-insertVarEnv (sigs,(c:ctxs),structs) t i = (sigs,(Map.insert i t c) : ctxs,structs)
+insertVarEnv (sigs, [], structs) t i = (sigs, [Map.fromList [(i,t)]], structs)
+insertVarEnv (sigs, c:ctxs, structs) t i = (sigs, Map.insert i t c : ctxs, structs)
 
 
 insertVarsEnv :: Env -> Type -> [Id] -> Env
@@ -66,7 +66,7 @@ insertVarsEnv env t (i:is) = insertVarsEnv (insertVarEnv env t i) t is
 
 
 insertFunVar :: Env -> Arg -> Env
-insertFunVar (sigs,(c:ctxs),structs) (ADecl t i) = (sigs, (Map.insert i t c) : ctxs,structs)
+insertFunVar (sigs, c:ctxs, structs) (ADecl t i) = (sigs, Map.insert i t c : ctxs,structs)
 insertFunVar (_, [], _) _ = error "function insert into empty context"
 
 
@@ -77,10 +77,10 @@ insertFunVars env (a:args) = insertFunVars (insertFunVar env a) args
 
 lookUpStructField :: Env -> Id -> Type -> Err Type
 lookUpStructField (_,_,structs) membername (TypeId structname) = case Map.lookup structname structs of
-                                                                         Nothing -> fail $ "struct " ++ show structname ++ " not found"
-                                                                         Just struct -> case Map.lookup membername struct of
-                                                                                          Nothing -> fail $ "struct member " ++ show membername ++ " of struct " ++ show structname ++ " not found"
-                                                                                          Just field -> return field
+                                                                   Nothing -> fail $ "struct " ++ show structname ++ " not found"
+                                                                   Just struct -> case Map.lookup membername struct of
+                                                                     Nothing -> fail $ "struct member " ++ show membername ++ " of struct " ++ show structname ++ " not found"
+                                                                     Just field -> return field
 lookUpStructField (_,_,_) _ structname = fail $ "identifier " ++ printTree structname ++ " not a struct name"
 
 
@@ -97,7 +97,7 @@ checkExpType env typ expr = do
 inferBin :: [Type] -> Env -> Exp -> Exp -> Err Type
 inferBin types env exp1 exp2 = do
                                  typ <- inferExpr env exp1
-                                 if elem typ types
+                                 if typ `elem` types
                                    then
                                      do
                                        checkExpType env typ exp2
@@ -161,16 +161,16 @@ inferExpr env (EAss lhs rhs) = do
 
 checkTypeExists :: Env -> Type -> Err ()
 checkTypeExists (_,_,structs) typ = case typ of
-                                            TypeId ident -> case Map.lookup ident structs of
-                                                              Nothing -> fail $ "bad datatype " ++ printTree ident
-                                                              _ -> return ()
-                                            _ -> return ()
+                                      TypeId ident -> case Map.lookup ident structs of
+                                                        Nothing -> fail $ "bad datatype " ++ printTree ident
+                                                        _ -> return ()
+                                      _ -> return ()
 
 
 checkStm :: Env -> Stm -> Err Env
 checkStm env (SReturn e) = do
                              _ <- inferExpr env e
-                              --TODO: check with function signature
+                             --TODO: check with function signature
                              return env
 checkStm env (SExp e) = do
                           _ <- inferExpr env e
@@ -189,13 +189,11 @@ checkStm env (SWhile e s) = do
                               when (conditionType /= Type_bool) $ fail $ "bad condition type " ++ printTree e ++ " in while: expected bool, found " ++ printTree conditionType
                               innerEnv <- envNewBlock env
                               innerEnv2 <- checkStm innerEnv s
-                              env2 <- envPopBlock innerEnv2
-                              return env2
+                              envPopBlock innerEnv2
 checkStm env (SBlock ss) = do
                              innerEnv <- envNewBlock env
                              innerEnv2 <- checkStms innerEnv ss
-                             env2 <- envPopBlock innerEnv2
-                             return env2
+                             envPopBlock innerEnv2
 checkStm env (SIfElse e s1 s2) = do
                                    conditionType <- inferExpr env e
                                    when (conditionType /= Type_bool) $ fail $ "bad condition type " ++ printTree e ++ " in if: expected bool, found " ++ printTree conditionType
@@ -204,12 +202,11 @@ checkStm env (SIfElse e s1 s2) = do
                                    env2 <- envPopBlock innerEnv2
                                    innerEnv3 <- envNewBlock env2
                                    innerEnv4 <- checkStm innerEnv3 s2
-                                   env3 <- envPopBlock innerEnv4
-                                   return env3
+                                   envPopBlock innerEnv4
 
 
 envNewBlock :: Env -> Err Env
-envNewBlock (sigs,c,structs) = return (sigs, [Map.fromList []] ++ c,structs)
+envNewBlock (sigs,c,structs) = return (sigs, Map.fromList [] : c,structs)
 
 
 envPopBlock :: Env -> Err Env
@@ -217,28 +214,26 @@ envPopBlock (sigs,c,structs) = return (sigs, tail c, structs)
 
 
 checkStms :: Env -> [Stm] -> Err Env
-checkStms env stms = foldM checkStm env stms
+checkStms = foldM checkStm
 
 
 checkDef :: Env -> Def -> Err Env
 checkDef env (DFun _ _ args stmts) = do
-                                                 env2 <- envNewBlock env
-                                                 env3 <- insertFunVars env2 args --TODO: check for unique arguments, e.g. "void foo(int i, double i){}"
-                                                 env4 <- checkStms env3 stmts
-                                                 --TODO: iterate over stmts if return has correct type
-                                                 env5 <- envPopBlock env4
-                                                 return env5
+                                       env2 <- envNewBlock env
+                                       env3 <- insertFunVars env2 args --TODO: check for unique arguments, e.g. "void foo(int i, double i){}"
+                                       env4 <- checkStms env3 stmts
+                                       --TODO: iterate over stmts if return has correct type
+                                       envPopBlock env4
 
-checkDef (sigs, ctxs, structs) (DStruct ident fields) = do
-                                                          case Map.lookup ident structs of
-                                                            Nothing -> return (sigs, ctxs, Map.insert ident f structs)
-                                                                         where f = Map.fromList [(i,t) | (FDecl t i) <- fields]
-                                                                         --TODO: check fields are name unique, e.g "struct s { int i; double i; };"
-                                                            Just _ -> fail $ "struct " ++ printTree ident ++ " already defined"
+checkDef (sigs, ctxs, structs) (DStruct ident fields) = case Map.lookup ident structs of
+                                                          Nothing -> return (sigs, ctxs, Map.insert ident f structs)
+                                                                       where f = Map.fromList [(i,t) | (FDecl t i) <- fields]
+                                                                       --TODO: check fields are name unique, e.g "struct s { int i; double i; };"
+                                                          Just _ -> fail $ "struct " ++ printTree ident ++ " already defined"
 
 
 checkDefs :: Env -> [Def] -> Err Env
-checkDefs env defs = foldM checkDef env defs
+checkDefs = foldM checkDef
 
 
 newEnv :: Env
@@ -247,16 +242,14 @@ newEnv = (Map.fromList builtIns, [], Map.fromList [] )
 
 
 extendSigs :: Env -> Def -> Err Env
-extendSigs (sigs,var,structs) (DFun returntype i args _) = do
-                                                             case Map.lookup i sigs of
-                                                               Nothing -> return (Map.insert i (argtypes,returntype) sigs,var,structs)
-                                                                            where argtypes = [t | ADecl t _ <- args]
-                                                               Just _ -> fail $ "function " ++ printTree i ++ " already defined"
+extendSigs (sigs,var,structs) (DFun returntype i args _) = case Map.lookup i sigs of
+                                                             Nothing -> return (Map.insert i (argtypes,returntype) sigs,var,structs)
+                                                                          where argtypes = [t | ADecl t _ <- args]
+                                                             Just _ -> fail $ "function " ++ printTree i ++ " already defined"
 extendSigs env (DStruct _ _) = return env
 
 
 typecheck :: Program -> Err Env
 typecheck (PDefs defs) = do
                            sigEnv <- foldM extendSigs newEnv defs
-                           endEnv <- checkDefs sigEnv defs
-                           return endEnv
+                           checkDefs sigEnv defs
