@@ -178,7 +178,7 @@ checkStm env (SInit t i e) = do
                                return $ insertVarEnv env t i
 checkStm env (SDecls t ids) = do
                                 checkTypeExists env t
-                                --TODO: check if ident exists already
+                                --TODO: check if idents exists already and if idents are unique, e.g. "int d, d;"
                                 return $ insertVarsEnv env t ids
 checkStm env (SWhile e s) = do
                               conditionType <- inferExpr env e
