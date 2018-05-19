@@ -61,14 +61,11 @@ insertVarsEnv env _ [] = env
 insertVarsEnv env t (i:is) = insertVarsEnv (insertVarEnv env t i) t is
 
 
-insertFunVar :: Env -> Arg -> Env
-insertFunVar (sigs, c:ctxs, structs) (ADecl t i) = (sigs, Map.insert i t c : ctxs,structs)
+insertFunVar :: Env -> Arg -> Err Env
+insertFunVar (sigs, c:ctxs, structs) (ADecl t i) = case Map.lookup i c of
+                                                     Nothing -> return (sigs, Map.insert i t c : ctxs, structs)
+                                                     Just _ -> fail $ "function variable " ++ printTree i ++ " already defined"
 insertFunVar (_, [], _) _ = error "function insert into empty context"
-
-
-insertFunVars :: Env -> [Arg] -> Err Env
-insertFunVars env [] = return env
-insertFunVars env (a:args) = insertFunVars (insertFunVar env a) args
 
 
 lookUpStructField :: Env -> Id -> Type -> Err Type
@@ -216,7 +213,7 @@ checkStms = foldM checkStm
 checkDef :: Env -> Def -> Err Env
 checkDef env (DFun _ _ args stmts) = do
                                        env2 <- envNewBlock env
-                                       env3 <- insertFunVars env2 args --TODO: check for unique arguments, e.g. "void foo(int i, double i){}"
+                                       env3 <- foldM insertFunVar env2 args
                                        env4 <- checkStms env3 stmts
                                        --TODO: iterate over stmts if return has correct type
                                        envPopBlock env4
