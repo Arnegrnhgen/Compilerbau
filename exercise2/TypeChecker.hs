@@ -20,15 +20,11 @@ type Struct = Map.Map Id Type
 -}
 
 
-lookupCtx :: [Context] -> Id -> Err Type
-lookupCtx [] (Id str) = fail $ "identifier " ++ str ++ " not found"
-lookupCtx (ctx:ctxs) ident = case Map.lookup ident ctx of
-                               Nothing -> lookupCtx ctxs ident
-                               Just x -> return x
-
-
 lookupVarEnv :: Env -> Id -> Err Type
-lookupVarEnv (_,ctxs,_) = lookupCtx ctxs
+lookupVarEnv (_, [], _) (Id str) = fail $ "identifier " ++ str ++ " not found"
+lookupVarEnv (sigs, (ctx:ctxs), structs) ident = case Map.lookup ident ctx of
+                                                   Nothing -> lookupVarEnv (sigs, ctxs, structs) ident
+                                                   Just x -> return x
 
 
 lookupFunEnv :: Env -> Id -> Err ([Type], Type)
