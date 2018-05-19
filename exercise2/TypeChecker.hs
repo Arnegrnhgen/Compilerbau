@@ -182,7 +182,7 @@ checkStm env (SWhile e s) = do
                               envPopBlock innerEnv2
 checkStm env (SBlock ss) = do
                              innerEnv <- envNewBlock env
-                             innerEnv2 <- checkStms innerEnv ss
+                             innerEnv2 <- foldM checkStm innerEnv ss
                              envPopBlock innerEnv2
 checkStm env (SIfElse e s1 s2) = do
                                    conditionType <- inferExpr env e
@@ -203,15 +203,11 @@ envPopBlock :: Env -> Err Env
 envPopBlock (sigs,c,structs) = return (sigs, tail c, structs)
 
 
-checkStms :: Env -> [Stm] -> Err Env
-checkStms = foldM checkStm
-
-
 checkDef :: Env -> Def -> Err Env
 checkDef env (DFun _ _ args stmts) = do
                                        env2 <- envNewBlock env
                                        env3 <- foldM insertFunVar env2 args
-                                       env4 <- checkStms env3 stmts
+                                       env4 <- foldM checkStm env3 stmts
                                        --TODO: iterate over stmts if return has correct type
                                        envPopBlock env4
 
