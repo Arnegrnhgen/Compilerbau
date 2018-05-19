@@ -65,7 +65,7 @@ insertFunVar :: Env -> Arg -> Err Env
 insertFunVar (sigs, c:ctxs, structs) (ADecl t i) = case Map.lookup i c of
                                                      Nothing -> return (sigs, Map.insert i t c : ctxs, structs)
                                                      Just _ -> fail $ "function variable " ++ printTree i ++ " already defined"
-insertFunVar (_, [], _) _ = error "function insert into empty context"
+insertFunVar (_, [], _) _ = error "function var insert into empty context"
 
 
 lookUpStructField :: Env -> Id -> Type -> Err Type
