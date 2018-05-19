@@ -222,10 +222,6 @@ checkDef (sigs, ctxs, structs) (DStruct ident fields) = case Map.lookup ident st
                                                           Just _ -> fail $ "struct " ++ printTree ident ++ " already defined"
 
 
-checkDefs :: Env -> [Def] -> Err Env
-checkDefs = foldM checkDef
-
-
 newEnv :: Env
 newEnv = (Map.fromList builtIns, [], Map.fromList [] )
     where builtIns = [(Id "printInt",([Type_int], Type_void)), (Id "printDouble",([Type_double], Type_void)), (Id "readInt",([], Type_int)), (Id "readDouble",([], Type_double))]
@@ -242,4 +238,4 @@ extendSigs env (DStruct _ _) = return env
 typecheck :: Program -> Err Env
 typecheck (PDefs defs) = do
                            sigEnv <- foldM extendSigs newEnv defs
-                           checkDefs sigEnv defs
+                           foldM checkDef sigEnv defs
