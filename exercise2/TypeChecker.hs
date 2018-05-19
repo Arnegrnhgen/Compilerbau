@@ -51,14 +51,17 @@ checkFunArgs env exps (args,rettype) = do
                                          return rettype
 
 
-insertVarEnv :: Env -> Type -> Id -> Env
-insertVarEnv (sigs, [], structs) t i = (sigs, [Map.fromList [(i,t)]], structs)
-insertVarEnv (sigs, c:ctxs, structs) t i = (sigs, Map.insert i t c : ctxs, structs)
+insertVarEnv :: Env -> Type -> Id -> Err Env
+insertVarEnv (sigs, c:ctxs, structs) t i = case Map.lookup i c of
+                                             Nothing -> return (sigs, Map.insert i t c : ctxs, structs)
+                                             Just _ -> fail $ "variable " ++ printTree i ++ " already defined"
+insertVarEnv (_, [], _) _ _ = error "variable insert into empty context"
 
 
-insertVarsEnv :: Env -> Type -> [Id] -> Env
-insertVarsEnv env _ [] = env
-insertVarsEnv env t (i:is) = insertVarsEnv (insertVarEnv env t i) t is
+insertVarsEnv :: Err Env -> Type -> [Id] -> Err Env
+insertVarsEnv (Ok env) _ [] = Ok env
+insertVarsEnv (Ok env) t (i:is) = insertVarsEnv (insertVarEnv env t i) t is
+insertVarsEnv (Bad msg) _ _ = Bad msg
 
 
 insertFunVar :: Env -> Arg -> Err Env
@@ -171,12 +174,10 @@ checkStm env (SExp e) = do
 checkStm env (SInit t i e) = do
                                checkTypeExists env t
                                checkExpType env t e
-                               --TODO: check if ident exists already
-                               return $ insertVarEnv env t i
+                               insertVarEnv env t i
 checkStm env (SDecls t ids) = do
                                 checkTypeExists env t
-                                --TODO: check if idents exists already and if idents are unique, e.g. "int d, d;"
-                                return $ insertVarsEnv env t ids
+                                insertVarsEnv (Ok env) t ids
 checkStm env (SWhile e s) = do
                               conditionType <- inferExpr env e
                               when (conditionType /= Type_bool) $ fail $ "bad condition type " ++ printTree e ++ " in while: expected bool, found " ++ printTree conditionType
