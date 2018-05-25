@@ -107,7 +107,7 @@ inferExpr _ (EInt _) = return Type_int
 inferExpr _ (EDouble _) = return Type_double
 inferExpr env (EId ident) = lookupVarEnv env ident
 inferExpr env (EApp ident exprs) = lookupFunEnv env ident >>= checkFunArgs env exprs
-inferExpr env (EProj (EId lhs) (EId rhs)) = lookupVarEnv env lhs >>= lookUpStructField env rhs --TODO allow a.b.c
+inferExpr env (EProj lhs (EId rhs)) = inferExpr env lhs >>= lookUpStructField env rhs
 inferExpr _ (EProj l r) = fail $ "invalid struct usage: " ++ printTree l ++ "." ++ printTree r
 inferExpr env (EPIncr expr) = inferExpr env expr --TODO: allow only int, double
 inferExpr env (EPDecr expr) = inferExpr env expr --TODO: allow only int, double
