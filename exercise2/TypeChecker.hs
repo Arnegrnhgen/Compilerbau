@@ -198,11 +198,7 @@ checkDef env (DFun _ _ args stmts) = do
                                        --TODO: iterate over stmts if return has correct type
                                        envPopBlock env4
 
-checkDef env@(sigs, ctxs, structs) (DStruct ident fields) = case Map.lookup ident structs of
-                                                              Nothing -> do
-                                                                           f <- foldM (insertStructField env) Map.empty fields
-                                                                           return (sigs, ctxs, Map.insert ident f structs)
-                                                              Just _ -> fail $ "struct " ++ printTree ident ++ " already defined"
+checkDef env (DStruct _ _)  = return env
 
 
 newEnv :: Env
@@ -218,7 +214,11 @@ extendSigs env@(sigs, var, structs) (DFun returntype i args _) = do
                                                                      (Nothing, sigs2) -> return (sigs2,var,structs)
                                                                      (Just _, _) -> fail $ "function " ++ printTree i ++ " already defined"
                                                                      where argtypes = [t | ADecl t _ <- args]
-extendSigs env (DStruct _ _) = return env
+extendSigs env@(sigs, ctxs, structs) (DStruct ident fields) = case Map.lookup ident structs of
+                                                                Nothing -> do
+                                                                             f <- foldM (insertStructField env) Map.empty fields
+                                                                             return (sigs, ctxs, Map.insert ident f structs)
+                                                                Just _ -> fail $ "struct " ++ printTree ident ++ " already defined"
 
 
 typecheck :: Program -> Err Env
