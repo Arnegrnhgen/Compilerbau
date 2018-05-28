@@ -70,34 +70,43 @@ lookUpStructField (_, _, structs) membername (TypeId structname) = case Map.look
 lookUpStructField (_, _, _) _ structname = fail $ "identifier " ++ printTree structname ++ " is not a struct name"
 
 
-checkExpType :: Env -> Type -> Exp -> Err Type
+checkExpType :: Env -> Type -> Exp -> Err ()
 checkExpType env typ expr = do
                               typ2 <- inferExpr env expr
                               when (typ2 /= typ) $ fail $ "type of expression " ++ printTree expr ++ " expected to be " ++ printTree typ ++ ", but found " ++ printTree typ2
-                              return typ
 
 
 inferBin :: [Type] -> Env -> Exp -> Exp -> Err Type
 inferBin types env exp1 exp2 = do
-                                 typ <- inferExpr env exp1
-                                 unless (typ `elem` types) $ fail $ "wrong type of expression " ++ printTree exp1 ++ " for binary operation: " ++ printTree typ
-                                 checkExpType env typ exp2
+                                 typ1 <- inferExpr env exp1
+                                 typ2 <- inferExpr env exp2
+                                 unless (typ1 `elem` types) $ fail $ "wrong type of expression " ++ printTree exp1 ++ " for binary operation: " ++ printTree typ1
+                                 unless (typ2 `elem` types) $ fail $ "wrong type of expression " ++ printTree exp2 ++ " for binary operation: " ++ printTree typ2
+                                 typesCompatible typ1 typ2
 
 
 inferNumBin :: Env -> Exp -> Exp -> Err Type
 inferNumBin env exp1 exp2 = do
                               type1 <- inferExpr env exp1
                               type2 <- inferExpr env exp2
-                              case type1 of
-                                Type_int -> case type2 of
-                                              Type_int -> return Type_int
-                                              Type_double -> return Type_double
-                                              _ -> fail $ "wrong type of second numeric expression " ++ printTree exp2 ++ ": " ++ printTree type2
-                                Type_double -> case type2 of
-                                                 Type_int -> return Type_double
-                                                 Type_double -> return Type_double
-                                                 _ -> fail $ "wrong type of second numeric expression " ++ printTree exp2 ++ ": " ++ printTree type2
-                                _ -> fail $ "wrong type of first numeric expression " ++ printTree exp1 ++ ": " ++ printTree type1
+                              _ <- isNumeric type1
+                              _ <- isNumeric type2
+                              typesCompatible type1 type2
+
+
+isNumeric :: Type -> Err Type
+isNumeric Type_int = return Type_int
+isNumeric Type_double = return Type_double
+isNumeric t = fail $ "invalid numeric type " ++ printTree t
+
+
+typesCompatible :: Type -> Type -> Err Type
+typesCompatible Type_int Type_int = return Type_int
+typesCompatible Type_int Type_double = return Type_double
+typesCompatible Type_double Type_int = return Type_double
+typesCompatible Type_double Type_double = return Type_double
+typesCompatible Type_bool Type_bool = return Type_bool
+typesCompatible t1 t2 = fail $ "incompatible types " ++ printTree t1 ++ " and " ++ printTree t2
 
 
 inferExpr :: Env -> Exp -> Err Type
@@ -109,10 +118,10 @@ inferExpr env (EId ident) = lookupVarEnv env ident
 inferExpr env (EApp ident exprs) = lookupFunEnv env ident >>= checkFunArgs env exprs
 inferExpr env (EProj lhs (EId rhs)) = inferExpr env lhs >>= lookUpStructField env rhs
 inferExpr _ (EProj l r) = fail $ "invalid struct usage: " ++ printTree l ++ "." ++ printTree r
-inferExpr env (EPIncr expr) = inferExpr env expr --TODO: allow only int, double
-inferExpr env (EPDecr expr) = inferExpr env expr --TODO: allow only int, double
-inferExpr env (EIncr expr) = inferExpr env expr --TODO: allow only int, double
-inferExpr env (EDecr expr) = inferExpr env expr --TODO: allow only int, double
+inferExpr env (EPIncr expr) = inferExpr env expr >>= isNumeric
+inferExpr env (EPDecr expr) = inferExpr env expr >>= isNumeric
+inferExpr env (EIncr expr) = inferExpr env expr >>= isNumeric
+inferExpr env (EDecr expr) = inferExpr env expr >>= isNumeric
 inferExpr env (ETimes exp1 exp2) = inferNumBin env exp1 exp2
 inferExpr env (EDiv exp1 exp2) = inferNumBin env exp1 exp2
 inferExpr env (EPlus exp1 exp2) = inferNumBin env exp1 exp2
@@ -121,8 +130,8 @@ inferExpr env (ELt exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
 inferExpr env (EGt exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
 inferExpr env (ELtEq exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
 inferExpr env (EGtWq exp1 exp2) = inferNumBin env exp1 exp2 >> return Type_bool
-inferExpr env (EEq exp1 exp2) = inferBin [Type_int, Type_double, Type_bool] env exp1 exp2 >> return Type_bool --TODO:allow int double comparison
-inferExpr env (ENEq exp1 exp2) = inferBin [Type_int, Type_double, Type_bool] env exp1 exp2 >> return Type_bool --TODO:allow int double comparison
+inferExpr env (EEq exp1 exp2) = inferBin [Type_int, Type_double, Type_bool] env exp1 exp2 >> return Type_bool
+inferExpr env (ENEq exp1 exp2) = inferBin [Type_int, Type_double, Type_bool] env exp1 exp2 >> return Type_bool
 inferExpr env (EAnd exp1 exp2) = inferBin [Type_bool] env exp1 exp2 >> return Type_bool
 inferExpr env (EOr exp1 exp2) = inferBin [Type_bool] env exp1 exp2 >> return Type_bool
 inferExpr env (EPrAss structname membername value) = do
@@ -146,7 +155,10 @@ checkTypeExists _ _ = return ()
 
 checkStm :: Env -> Stm -> Err Env
 checkStm env (SReturn e) = do
-                             _ <- inferExpr env e
+                             --typ_actual <- inferExpr env e
+                             typ_expected <- lookupVarEnv env (Id "__return")
+                             checkExpType env typ_expected e
+
                              --TODO: check with function signature
                              return env
 checkStm env (SExp e) = do
@@ -154,7 +166,7 @@ checkStm env (SExp e) = do
                           return env
 checkStm env (SInit t i e) = do
                                checkTypeExists env t
-                               _ <- checkExpType env t e
+                               checkExpType env t e
                                insertVarEnv t env i
 checkStm env (SDecls t ids) = do
                                 checkTypeExists env t
@@ -191,13 +203,14 @@ insertStructField env m (FDecl typ ident) = do
 
 
 checkDef :: Env -> Def -> Err Env
-checkDef env (DFun _ _ args stmts) = do
+checkDef env (DFun rettype _ args stmts) = do
                                        env2 <- envNewBlock env
-                                       env3 <- foldM insertFunVar env2 args
-                                       env4 <- foldM checkStm env3 stmts
+                                       env3 <- insertVarEnv rettype env2 (Id "__return")
+                                       env4 <- foldM insertFunVar env3 args
+                                       env5 <- foldM checkStm env4 stmts
+                                       --mapM_ (checkExpType env5 rettype) [e | SReturn e <- stmts]
                                        --TODO: iterate over stmts if return has correct type
-                                       envPopBlock env4
-
+                                       envPopBlock env5
 checkDef env (DStruct _ _)  = return env
 
 
