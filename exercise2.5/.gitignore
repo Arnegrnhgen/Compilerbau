@@ -1,0 +1,16 @@
+*.hi
+*.o
+
+AbsCPP.hs
+DocCPP.txt
+ErrM.hs
+LexCPP.hs
+LexCPP.x
+ParCPP.hs
+ParCPP.y
+PrintCPP.hs
+SkelCPP.hs
+TestCPP.hs
+lab2
+
+testsuite/progs-test-lab2
