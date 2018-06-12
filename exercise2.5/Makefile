@@ -2,13 +2,13 @@ all:
 	bnfc CPP.cf
 	happy -gca ParCPP.y
 	alex -g LexCPP.x
-	ghc -Wall --make lab2.hs -o lab2
+	stack build
+	ln -s .stack-work/install/x86_64-linux-nopie/lts-9.21/8.0.2/bin/lab3 lab3
 
 clean:
-	-rm -f lab2
-	-rm -f *.log *.aux *.hi *.o *.dvi
-	-rm -f DocCPP.ps
+	rm -f lab3
+	stack clean
 
 distclean: clean
-	-rm -f DocCPP.* LexCPP.* ParCPP.* LayoutCPP.* SkelCPP.* PrintCPP.* TestCPP.* AbsCPP.* TestCPP ErrM.* SharedString.* CPP.dtd XMLCPP.*
+	rm -f DocCPP.* LexCPP.* ParCPP.* LayoutCPP.* SkelCPP.* PrintCPP.* TestCPP.* AbsCPP.* TestCPP ErrM.* SharedString.* CPP.dtd XMLCPP.*
 

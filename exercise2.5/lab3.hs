@@ -7,7 +7,8 @@ import ParCPP
 import ErrM
 
 import TypeChecker
-import Interpreter
+--import Interpreter
+import Codegen
 
 -- driver
 
@@ -20,11 +21,15 @@ check s = case pProgram (myLexer s) of
                           Bad err -> do putStrLn "TYPE ERROR"
                                         putStrLn err
                                         exitFailure 
-                          Ok tree_a -> interpret tree_a
+                          Ok tree_a -> case codegen tree_a of
+                                         Bad err -> do putStrLn "CODEGEN ERROR"
+                                                       putStrLn err
+                                                       exitFailure
+                                         Ok _    -> putStrLn "OK"
 
 main :: IO ()
 main = do args <- getArgs
           case args of
             [file] -> readFile file >>= check
-            _      -> do putStrLn "Usage: lab2 <SourceFile>"
+            _      -> do putStrLn "Usage: lab3 <SourceFile>"
                          exitFailure

@@ -1,6 +1,8 @@
 *.hi
 *.o
 
+.stack-work
+
 AbsCPP.hs
 DocCPP.txt
 ErrM.hs
@@ -11,6 +13,6 @@ ParCPP.y
 PrintCPP.hs
 SkelCPP.hs
 TestCPP.hs
-lab2
+lab3
 
 testsuite/progs-test-lab2

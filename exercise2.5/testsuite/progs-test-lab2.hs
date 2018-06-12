@@ -22,7 +22,7 @@ import System.IO.Unsafe
 -- Executable name
 -- TODO: make an option
 --EXEC_NAME :: String
-executable_name = "lab2"
+executable_name = "lab3"
 
 
 {-# NOINLINE doDebug #-}
