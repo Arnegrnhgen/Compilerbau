@@ -33,10 +33,10 @@ typeExists _ = return ()
 
 initStructField :: Struct -> Field -> StateT Env Err Struct
 initStructField s (FDecl typ ident) = do
-                                          typeExists typ
-                                          case Map.insertLookupWithKey (\_ a _ -> a) ident typ s of
-                                            (Nothing, m2) -> return m2
-                                            (Just _, _) -> fail $ "struct member " ++ printTree ident ++ " already defined"
+                                        typeExists typ
+                                        case Map.insertLookupWithKey (\_ a _ -> a) ident typ s of
+                                          (Nothing, m2) -> return m2
+                                          (Just _, _) -> fail $ "struct member " ++ printTree ident ++ " already defined"
 
 
 parseSigs :: [Def] -> StateT Env Err ()
@@ -166,6 +166,7 @@ inferBin types exp1 exp2 = do
                                  typ' <- typesCompatible typ1 typ2
                                  return (typ', exp1_a, exp2_a)
 
+
 inferExpr :: Exp -> StateT Env Err (Type, Exp)
 inferExpr ETrue = return (Type_bool, ETyped ETrue Type_bool)
 inferExpr EFalse = return (Type_bool, ETyped EFalse Type_bool)
@@ -288,27 +289,22 @@ checkStm (SBlock ss) = do
 
 
 checkStmts :: [Stm] -> StateT Env Err [Stm]
-checkStmts [] = return []
-checkStmts (s:ss) = do
-                      s_a <- checkStm s
-                      r <- checkStmts ss
-                      return (s_a : r)
+checkStmts = mapM checkStm
 
 
 checkDefs :: [Def] -> StateT Env Err [Def]
-checkDefs [] = return []
-checkDefs (d:ds) = case d of
-                     (DFun rettype i args stmts) -> do
-                                                      newBlock
-                                                      insertVar rettype (Id "__return")
-                                                      mapM_ insertFunParam args
-                                                      stmts_a <- checkStmts stmts
-                                                      popBlock
-                                                      r <- checkDefs ds
-                                                      return (DFun rettype i args stmts_a : r)
-                     (DStruct _ _) -> do
-                                        r <- checkDefs ds
-                                        return (d : r)
+checkDefs = mapM checkDef
+
+
+checkDef :: Def -> StateT Env Err Def
+checkDef (DFun rettype i args stmts) = do
+                                         newBlock
+                                         insertVar rettype (Id "__return")
+                                         mapM_ insertFunParam args
+                                         stmts_a <- checkStmts stmts
+                                         popBlock
+                                         return (DFun rettype i args stmts_a)
+checkDef d@(DStruct _ _) = return d
 
 
 typecheck :: Program -> Err Program
