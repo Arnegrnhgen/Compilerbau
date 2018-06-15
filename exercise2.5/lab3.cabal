@@ -18,6 +18,7 @@ executable lab3
   other-modules:
     AbsCPP
     Codegen
+    Emit
     ErrM
     LexCPP
     ParCPP
