@@ -74,10 +74,10 @@ createBlocks m = map makeBlock $ sortBlocks $ Map.toList (blocks m)
 
 
 makeBlock :: (LAST.Name, BlockState) -> LAST.BasicBlock
-makeBlock (l, (BlockState _ s t)) = LAST.BasicBlock l (reverse s) (maketerm t)
+makeBlock (l, BlockState _ s t) = LAST.BasicBlock l (reverse s) (maketerm t)
   where
     maketerm (Just x) = x
-    maketerm Nothing = error $ "Block has no terminator: " ++ (show l)
+    maketerm Nothing = error $ "Block has no terminator: " ++ show l
 
 
 runLLVM :: LAST.Module -> LLVM a -> LAST.Module
@@ -191,17 +191,17 @@ fresh = do
 
 
 local ::  LAST.Name -> LAST.Operand
-local name = LAST.LocalReference double name --TODO: add parameter for different types
+local = LAST.LocalReference int --TODO: add parameter for different types
 
 
 externf :: LAST.Name -> LAST.Operand
-externf = LAST.ConstantOperand . LASTC.GlobalReference double --TODO: add parameter for different types
+externf = LAST.ConstantOperand . LASTC.GlobalReference int --TODO: add parameter for different types
 
 
 assign :: String -> LAST.Operand -> Codegen ()
 assign var x = do
   lcls <- gets symtab
-  modify $ \s -> s { symtab = [(var, x)] ++ lcls }
+  modify $ \s -> s { symtab = (var, x) : lcls }
 
 
 getvar :: String -> Codegen LAST.Operand
@@ -212,10 +212,10 @@ getvar var = do
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
 
-instr :: LAST.Instruction -> Codegen (LAST.Operand)
+instr :: LAST.Instruction -> Codegen LAST.Operand
 instr ins = do
   n <- fresh
-  let ref = (LAST.UnName n)
+  let ref = LAST.UnName n
   blk <- current
   let i = stack blk
   modifyBlock (blk { stack = (ref LAST.:= ins) : i } )
@@ -238,6 +238,9 @@ fmul :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
 fmul a b = instr $ LAST.FMul LAST.NoFastMathFlags a b []
 fdiv :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
 fdiv a b = instr $ LAST.FDiv LAST.NoFastMathFlags a b []
+
+iadd :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
+iadd a b = instr $ LAST.Add False False a b []
 
 
 br :: LAST.Name -> Codegen (LAST.Named LAST.Terminator)
@@ -270,3 +273,7 @@ store ptr val = instr $ LAST.Store False ptr val Nothing 0 []
 
 load :: LAST.Operand -> Codegen LAST.Operand
 load ptr = instr $ LAST.Load False ptr Nothing 0 []
+
+
+cons :: LASTC.Constant -> LAST.Operand
+cons = LAST.ConstantOperand

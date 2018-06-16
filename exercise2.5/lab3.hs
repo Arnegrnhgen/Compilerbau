@@ -6,27 +6,35 @@ import System.Exit (exitFailure)
 import ParCPP
 import ErrM
 
+import System.IO
+
 import TypeChecker
 --import Interpreter
---import Codegen
+import Codegen
 import Emit
+
+import qualified LLVM.AST as LAST
+--import qualified LLVM.Module as LMOD
 
 -- driver
 
+initModule :: LAST.Module
+initModule = emptyModule "codegen"
+
+
 check :: String -> IO () 
 check s = case pProgram (myLexer s) of
-            Bad err  -> do putStrLn "SYNTAX ERROR"
-                           putStrLn err
+            Bad err  -> do hPutStrLn stderr "SYNTAX ERROR"
+                           hPutStrLn stderr err
                            exitFailure 
             Ok  tree -> case typecheck tree of
-                          Bad err -> do putStrLn "TYPE ERROR"
-                                        putStrLn err
+                          Bad err -> do hPutStrLn stderr "TYPE ERROR"
+                                        hPutStrLn stderr err
                                         exitFailure 
-                          Ok tree_a -> case codegen tree_a of
-                                         Bad err -> do putStrLn "CODEGEN ERROR"
-                                                       putStrLn err
-                                                       exitFailure
-                                         Ok _    -> putStrLn "OK"
+                          Ok tree_a -> do
+                                         code <- codegen initModule tree_a
+                                         putStrLn code
+                                         return ()
 
 main :: IO ()
 main = do args <- getArgs
