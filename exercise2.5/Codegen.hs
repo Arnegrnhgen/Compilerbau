@@ -212,6 +212,13 @@ getvar var = do
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
 
+getsymtab :: Codegen SymbolTable
+getsymtab = gets symtab
+
+
+restoresymtab :: SymbolTable -> Codegen ()
+restoresymtab t = modify $ \s -> s { symtab = t }
+
 instr :: LAST.Instruction -> Codegen LAST.Operand
 instr ins = do
   n <- fresh
@@ -240,7 +247,13 @@ fdiv :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
 fdiv a b = instr $ LAST.FDiv LAST.NoFastMathFlags a b []
 
 iadd :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-iadd a b = instr $ LAST.Add False False a b []
+iadd a b = instr $ LAST.Add True False a b []
+isub :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
+isub a b = instr $ LAST.Sub True False a b []
+imul :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
+imul a b = instr $ LAST.Mul True False a b []
+idiv :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
+idiv a b = instr $ LAST.SDiv False a b []
 
 
 br :: LAST.Name -> Codegen (LAST.Named LAST.Terminator)

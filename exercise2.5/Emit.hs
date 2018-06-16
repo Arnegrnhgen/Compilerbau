@@ -70,6 +70,10 @@ cgenStmt (S.SInit typ (S.Id ident) expr) = do
 cgenStmt (S.SExp expr) = do
                            _ <- cgenExp expr
                            return ()
+cgenStmt (S.SBlock stmts) = do
+                              symtab <- getsymtab
+                              mapM_ cgenStmt stmts
+                              restoresymtab symtab
 
 
 cgenExp :: S.Exp -> Codegen LAST.Operand
@@ -81,7 +85,28 @@ cgenExp (S.ETyped (S.EPlus e1 e2) typ) = do
                                            case typ of
                                              S.Type_int -> iadd c1 c2
                                              S.Type_double -> fadd c1 c2
-                                             _ -> error $ "invalid plus typ: " ++ printTree typ
+                                             _ -> error $ "invalid add typ: " ++ printTree typ
+cgenExp (S.ETyped (S.EMinus e1 e2) typ) = do
+                                          c1 <- cgenExp e1
+                                          c2 <- cgenExp e2
+                                          case typ of
+                                            S.Type_int -> isub c1 c2
+                                            S.Type_double -> fsub c1 c2
+                                            _ -> error $ "invalid sub typ: " ++ printTree typ
+cgenExp (S.ETyped (S.ETimes e1 e2) typ) = do
+                                          c1 <- cgenExp e1
+                                          c2 <- cgenExp e2
+                                          case typ of
+                                            S.Type_int -> imul c1 c2
+                                            S.Type_double -> fmul c1 c2
+                                            _ -> error $ "invalid mmul typ: " ++ printTree typ
+cgenExp (S.ETyped (S.EDiv e1 e2) typ) = do
+                                           c1 <- cgenExp e1
+                                           c2 <- cgenExp e2
+                                           case typ of
+                                             S.Type_int -> idiv c1 c2
+                                             S.Type_double -> fdiv c1 c2
+                                             _ -> error $ "invalid div typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EId (S.Id ident)) typ) = do
                                                 var <- getvar ident
                                                 load var
