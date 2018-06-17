@@ -215,29 +215,29 @@ inferExpr (EMinus exp1 exp2) = do
                                  (typ, exp1_a, exp2_a) <- inferNumBin exp1 exp2
                                  return (typ, ETyped (EMinus exp1_a exp2_a) typ)
 inferExpr (ELt exp1 exp2) = do
-                              (_, exp1_a, exp2_a) <- inferNumBin exp1 exp2
-                              return (Type_bool, ETyped (ELt exp1_a exp2_a) Type_bool)
+                              (typ, exp1_a, exp2_a) <- inferNumBin exp1 exp2
+                              return (Type_bool, ETyped (ELt exp1_a exp2_a) typ)
 inferExpr (EGt exp1 exp2) = do
-                              (_, exp1_a, exp2_a) <- inferNumBin exp1 exp2
-                              return (Type_bool, ETyped (EGt exp1_a exp2_a) Type_bool)
+                              (typ, exp1_a, exp2_a) <- inferNumBin exp1 exp2
+                              return (Type_bool, ETyped (EGt exp1_a exp2_a) typ)
 inferExpr (ELtEq exp1 exp2) = do
-                                (_, exp1_a, exp2_a) <- inferNumBin exp1 exp2
-                                return (Type_bool, ETyped (ELtEq exp1_a exp2_a) Type_bool)
+                                (typ, exp1_a, exp2_a) <- inferNumBin exp1 exp2
+                                return (Type_bool, ETyped (ELtEq exp1_a exp2_a) typ)
 inferExpr (EGtWq exp1 exp2) = do
-                                (_, exp1_a, exp2_a) <- inferNumBin exp1 exp2
-                                return (Type_bool, ETyped (EGtWq exp1_a exp2_a) Type_bool)
+                                (typ, exp1_a, exp2_a) <- inferNumBin exp1 exp2
+                                return (Type_bool, ETyped (EGtWq exp1_a exp2_a) typ)
 inferExpr (EEq exp1 exp2) = do
-                              (_, exp1_a, exp2_a) <- inferBin [Type_int, Type_double, Type_bool] exp1 exp2
-                              return (Type_bool, ETyped (EEq exp1_a exp2_a) Type_bool)
+                              (typ, exp1_a, exp2_a) <- inferBin [Type_int, Type_double, Type_bool] exp1 exp2
+                              return (Type_bool, ETyped (EEq exp1_a exp2_a) typ)
 inferExpr (ENEq exp1 exp2) = do
-                               (_, exp1_a, exp2_a) <- inferBin [Type_int, Type_double, Type_bool] exp1 exp2
-                               return (Type_bool, ETyped (ENEq exp1_a exp2_a) Type_bool)
+                               (typ, exp1_a, exp2_a) <- inferBin [Type_int, Type_double, Type_bool] exp1 exp2
+                               return (Type_bool, ETyped (ENEq exp1_a exp2_a) typ)
 inferExpr (EAnd exp1 exp2) = do
-                               (_, exp1_a, exp2_a) <- inferBin [Type_int, Type_double, Type_bool] exp1 exp2
-                               return (Type_bool, ETyped (EAnd exp1_a exp2_a) Type_bool)
+                               (typ, exp1_a, exp2_a) <- inferBin [Type_int, Type_double, Type_bool] exp1 exp2
+                               return (Type_bool, ETyped (EAnd exp1_a exp2_a) typ)
 inferExpr (EOr exp1 exp2) = do
-                              (_, exp1_a, exp2_a) <- inferBin [Type_int, Type_double, Type_bool] exp1 exp2
-                              return (Type_bool, ETyped (EOr exp1_a exp2_a) Type_bool)
+                              (typ, exp1_a, exp2_a) <- inferBin [Type_int, Type_double, Type_bool] exp1 exp2
+                              return (Type_bool, ETyped (EOr exp1_a exp2_a) typ)
 inferExpr (EPrAss structname membername value) = do
                                                    (lhstyp, _) <- inferExpr (EProj structname membername)
                                                    (rhstyp, rhs_a) <- inferExpr value

@@ -14,6 +14,9 @@ import qualified LLVM.AST.Constant as LASTC
 import qualified LLVM.Module as LMOD
 import qualified LLVM.AST.Float as LASTF
 import qualified LLVM.Internal.Context as LINTC
+import qualified LLVM.AST.IntegerPredicate as LASTIP
+import qualified LLVM.AST.FloatingPointPredicate as LASTFP
+
 
 
 liftError :: ExceptT String IO a -> IO a
@@ -74,6 +77,34 @@ cgenStmt (S.SBlock stmts) = do
                               symtab <- getsymtab
                               mapM_ cgenStmt stmts
                               restoresymtab symtab
+cgenStmt (S.SIfElse conexpr stm1 stm2) = do
+                                        ifthen <- addBlock "if.then"
+                                        ifelse <- addBlock "if.else"
+                                        ifexit <- addBlock "if.exit"
+
+                                        -- %entry
+                                        cond <- cgenExp conexpr
+                                        --unless (typ == S.Type_bool) $ error $ "invalid cp type: " ++ printTree typ
+                                        --test <- icmp LASTIP.NE false cond
+                                        cbr cond ifthen ifelse -- Branch based on the condition
+
+                                        -- if.then
+                                        setBlock ifthen
+                                        trval <- cgenStmt stm1       -- Generate code for the true branch
+                                        br ifexit                    -- Branch to the merge block
+                                        ifthen <- getBlock
+
+                                        -- if.else
+                                        setBlock ifelse
+                                        flval <- cgenStmt stm2      -- Generate code for the false branch
+                                        br ifexit                   -- Branch to the merge block
+                                        ifelse <- getBlock
+
+                                        -- if.exit
+                                        setBlock ifexit
+                                        --phi double [(trval, ifthen), (flval, ifelse)]
+
+                                        return ()
 
 
 cgenExp :: S.Exp -> Codegen LAST.Operand
@@ -115,3 +146,10 @@ cgenExp (S.ETyped (S.EAss (S.ETyped (S.EId (S.Id ident)) typ') rhs) typ) = do
                                                                              var <- getvar ident
                                                                              store var rhs_code
                                                                              return rhs_code
+cgenExp (S.ETyped (S.EEq lhs rhs) typ) = do
+                                           lcode <- cgenExp lhs
+                                           rcode <- cgenExp rhs
+                                           case typ of
+                                             S.Type_int -> icmp LASTIP.EQ lcode rcode
+                                             _ -> error $ "invalid eq cmp type: " ++ printTree typ
+cgenExp e = error $ "not implemented: " ++ show e ++ " : " ++ printTree e

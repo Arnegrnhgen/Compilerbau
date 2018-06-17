@@ -1,3 +1,5 @@
+//scoping
+
 int main() {
 	int i = 2;
 	int j = 0;

@@ -15,6 +15,8 @@ import qualified LLVM.AST.Linkage as LASTL
 import qualified LLVM.AST.Constant as LASTC
 import qualified LLVM.AST.CallingConvention as LASTCC
 import qualified LLVM.AST.Attribute as LASTA
+import qualified LLVM.AST.IntegerPredicate as LASTIP
+import qualified LLVM.AST.FloatingPointPredicate as LASTFP
 
 
 type Names = Map.Map String Int
@@ -36,6 +38,18 @@ void = LAST.VoidType
 
 bool :: LAST.Type
 bool = LAST.IntegerType 1
+
+one :: LAST.Operand
+one = cons $ LASTC.Int 32 1
+
+zero :: LAST.Operand
+zero = cons $ LASTC.Int 32 0
+
+false :: LAST.Operand
+false = zero
+
+true :: LAST.Operand
+true = one
 
 
 data CodegenState
@@ -232,8 +246,10 @@ instr ins = do
 terminator :: LAST.Named LAST.Terminator -> Codegen (LAST.Named LAST.Terminator)
 terminator trm = do
   blk <- current
-  modifyBlock (blk { term = Just trm })
-  return trm
+  case term blk of
+    Nothing -> modifyBlock (blk { term = Just trm }) >> return trm
+    Just x -> return x -- error $ "terminator already set"
+  --return trm
 
 
 --TODO: adopt for integer operations
@@ -254,6 +270,14 @@ imul :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
 imul a b = instr $ LAST.Mul True False a b []
 idiv :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
 idiv a b = instr $ LAST.SDiv False a b []
+
+
+fcmp :: LASTFP.FloatingPointPredicate -> LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
+fcmp cond a b = instr $ LAST.FCmp cond a b []
+
+
+icmp :: LASTIP.IntegerPredicate -> LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
+icmp cond a b = instr $ LAST.ICmp cond a b []
 
 
 br :: LAST.Name -> Codegen (LAST.Named LAST.Terminator)
