@@ -15,7 +15,7 @@ import qualified LLVM.Module as LMOD
 import qualified LLVM.AST.Float as LASTF
 import qualified LLVM.Internal.Context as LINTC
 import qualified LLVM.AST.IntegerPredicate as LASTIP
-import qualified LLVM.AST.FloatingPointPredicate as LASTFP
+--import qualified LLVM.AST.FloatingPointPredicate as LASTFP
 
 
 
@@ -50,7 +50,8 @@ codegenTop (S.DFun rettyp (S.Id ident) args stmts) = define (convertType rettyp)
         _ <- store var (local (LAST.Name ident'))
         assign ident' var
       cgenStmts stmts
-
+      --ret $ one
+codegenTop (S.DStruct _ _) = error $ "structs not yet implemented" --TODO
 
 
 cgenStmts :: [S.Stm] -> Codegen ()
@@ -74,9 +75,9 @@ cgenStmt (S.SExp expr) = do
                            _ <- cgenExp expr
                            return ()
 cgenStmt (S.SBlock stmts) = do
-                              symtab <- getsymtab
+                              st <- getsymtab
                               mapM_ cgenStmt stmts
-                              restoresymtab symtab
+                              restoresymtab st
 cgenStmt (S.SIfElse conexpr stm1 stm2) = do
                                         ifthen <- addBlock "if.then"
                                         ifelse <- addBlock "if.else"
@@ -86,26 +87,40 @@ cgenStmt (S.SIfElse conexpr stm1 stm2) = do
                                         cond <- cgenExp conexpr
                                         --unless (typ == S.Type_bool) $ error $ "invalid cp type: " ++ printTree typ
                                         --test <- icmp LASTIP.NE false cond
-                                        cbr cond ifthen ifelse -- Branch based on the condition
+                                        _ <- cbr cond ifthen ifelse -- Branch based on the condition
 
                                         -- if.then
-                                        setBlock ifthen
-                                        trval <- cgenStmt stm1       -- Generate code for the true branch
-                                        br ifexit                    -- Branch to the merge block
-                                        ifthen <- getBlock
+                                        _ <- setBlock ifthen
+                                        cgenStmt stm1       -- Generate code for the true branch
+                                        _ <- br ifexit                    -- Branch to the merge block
 
                                         -- if.else
-                                        setBlock ifelse
-                                        flval <- cgenStmt stm2      -- Generate code for the false branch
-                                        br ifexit                   -- Branch to the merge block
-                                        ifelse <- getBlock
+                                        _ <- setBlock ifelse
+                                        cgenStmt stm2      -- Generate code for the false branch
+                                        _ <- br ifexit                   -- Branch to the merge block
 
                                         -- if.exit
-                                        setBlock ifexit
+                                        _ <- setBlock ifexit
                                         --phi double [(trval, ifthen), (flval, ifelse)]
 
                                         return ()
+cgenStmt (S.SWhile conexpr stm) = do
+                                    forentry <- addBlock "for.entry"
+                                    forloop <- addBlock "for.loop"
+                                    forexit <- addBlock "for.exit"
 
+                                    _ <- br forentry
+
+                                    _ <- setBlock forentry
+                                    cond <- cgenExp conexpr
+                                    _ <- cbr cond forloop forexit
+
+                                    _ <- setBlock forloop
+                                    cgenStmt stm
+                                    _ <- br forentry
+
+                                    _ <- setBlock forexit
+                                    return ()
 
 cgenExp :: S.Exp -> Codegen LAST.Operand
 cgenExp (S.ETyped (S.EDouble d) _) = return $ cons $ LASTC.Float (LASTF.Double d)
@@ -138,13 +153,13 @@ cgenExp (S.ETyped (S.EDiv e1 e2) typ) = do
                                              S.Type_int -> idiv c1 c2
                                              S.Type_double -> fdiv c1 c2
                                              _ -> error $ "invalid div typ: " ++ printTree typ
-cgenExp (S.ETyped (S.EId (S.Id ident)) typ) = do
+cgenExp (S.ETyped (S.EId (S.Id ident)) _) = do
                                                 var <- getvar ident
                                                 load var
-cgenExp (S.ETyped (S.EAss (S.ETyped (S.EId (S.Id ident)) typ') rhs) typ) = do
+cgenExp (S.ETyped (S.EAss (S.ETyped (S.EId (S.Id ident)) _) rhs) _) = do
                                                                              rhs_code <- cgenExp rhs
                                                                              var <- getvar ident
-                                                                             store var rhs_code
+                                                                             _ <- store var rhs_code
                                                                              return rhs_code
 cgenExp (S.ETyped (S.EEq lhs rhs) typ) = do
                                            lcode <- cgenExp lhs
@@ -152,4 +167,10 @@ cgenExp (S.ETyped (S.EEq lhs rhs) typ) = do
                                            case typ of
                                              S.Type_int -> icmp LASTIP.EQ lcode rcode
                                              _ -> error $ "invalid eq cmp type: " ++ printTree typ
+cgenExp (S.ETyped (S.ENEq lhs rhs) typ) = do
+                                            lcode <- cgenExp lhs
+                                            rcode <- cgenExp rhs
+                                            case typ of
+                                              S.Type_int -> icmp LASTIP.NE lcode rcode
+                                              _ -> error $ "invalid ne cmp type: " ++ printTree typ
 cgenExp e = error $ "not implemented: " ++ show e ++ " : " ++ printTree e
