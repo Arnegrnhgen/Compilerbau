@@ -35,7 +35,7 @@ convertType S.Type_void = Codegen.void
 convertType S.Type_bool = Codegen.bool
 convertType S.Type_int = Codegen.int
 convertType S.Type_double = Codegen.double
-convertType (S.TypeId _) = undefined --TODO structs
+convertType (S.TypeId _) = error $ "TODO ERROR: structs no yet convertable" --TODO structs
 
 
 codegenTop :: S.Def -> LLVM ()
@@ -51,7 +51,7 @@ codegenTop (S.DFun rettyp (S.Id ident) args stmts) = define (convertType rettyp)
         assign ident' var
       cgenStmts stmts
       --ret $ one
-codegenTop (S.DStruct _ _) = error $ "structs not yet implemented" --TODO
+codegenTop (S.DStruct _ _) = error $ "TODO ERROR: structs not yet implemented" --TODO
 
 
 cgenStmts :: [S.Stm] -> Codegen ()
@@ -131,28 +131,28 @@ cgenExp (S.ETyped (S.EPlus e1 e2) typ) = do
                                            case typ of
                                              S.Type_int -> iadd c1 c2
                                              S.Type_double -> fadd c1 c2
-                                             _ -> error $ "invalid add typ: " ++ printTree typ
+                                             _ -> error $ "CODEGEN ERROR: invalid add typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EMinus e1 e2) typ) = do
                                           c1 <- cgenExp e1
                                           c2 <- cgenExp e2
                                           case typ of
                                             S.Type_int -> isub c1 c2
                                             S.Type_double -> fsub c1 c2
-                                            _ -> error $ "invalid sub typ: " ++ printTree typ
+                                            _ -> error $ "CODEGEN ERROR: invalid sub typ: " ++ printTree typ
 cgenExp (S.ETyped (S.ETimes e1 e2) typ) = do
                                           c1 <- cgenExp e1
                                           c2 <- cgenExp e2
                                           case typ of
                                             S.Type_int -> imul c1 c2
                                             S.Type_double -> fmul c1 c2
-                                            _ -> error $ "invalid mmul typ: " ++ printTree typ
+                                            _ -> error $ "CODEGEN ERROR: invalid mmul typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EDiv e1 e2) typ) = do
                                            c1 <- cgenExp e1
                                            c2 <- cgenExp e2
                                            case typ of
                                              S.Type_int -> idiv c1 c2
                                              S.Type_double -> fdiv c1 c2
-                                             _ -> error $ "invalid div typ: " ++ printTree typ
+                                             _ -> error $ "CODEGEN ERROR: invalid div typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EId (S.Id ident)) _) = do
                                                 var <- getvar ident
                                                 load var
@@ -166,14 +166,14 @@ cgenExp (S.ETyped (S.EEq lhs rhs) typ) = do
                                            rcode <- cgenExp rhs
                                            case typ of
                                              S.Type_int -> icmp LASTIP.EQ lcode rcode
-                                             _ -> error $ "invalid eq cmp type: " ++ printTree typ
+                                             _ -> error $ "TODO ERROR: invalid eq cmp type: " ++ printTree typ
 cgenExp (S.ETyped (S.ENEq lhs rhs) typ) = do
                                             lcode <- cgenExp lhs
                                             rcode <- cgenExp rhs
                                             case typ of
                                               S.Type_int -> icmp LASTIP.NE lcode rcode
-                                              _ -> error $ "invalid ne cmp type: " ++ printTree typ
+                                              _ -> error $ "TODO ERROR: invalid ne cmp type: " ++ printTree typ
 cgenExp (S.ETyped (S.EApp (S.Id ident) argexprs) typ) = do
                                                           argcodes <- mapM cgenExp argexprs
                                                           call (externf (LAST.Name ident)) argcodes
-cgenExp e = error $ "not implemented: " ++ show e ++ " : " ++ printTree e
+cgenExp e = error $ "TODO ERROR: not implemented: " ++ show e ++ " : " ++ printTree e

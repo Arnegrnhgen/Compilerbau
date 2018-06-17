@@ -91,7 +91,7 @@ makeBlock :: (LAST.Name, BlockState) -> LAST.BasicBlock
 makeBlock (l, BlockState _ s t) = LAST.BasicBlock l (reverse s) (maketerm t)
   where
     maketerm (Just x) = x
-    maketerm Nothing = error $ "Block has no terminator: " ++ show l
+    maketerm Nothing = error $ "CODEGEN ERROR: Block has no terminator: " ++ show l
 
 
 runLLVM :: LAST.Module -> LLVM a -> LAST.Module
@@ -194,7 +194,7 @@ current = do
   blks <- gets blocks
   case Map.lookup c blks of
     Just x -> return x
-    Nothing -> error $ "No such block: " ++ show c
+    Nothing -> error $ "CODEGEN ERROR: No such block: " ++ show c
 
 
 fresh :: Codegen Word
@@ -223,7 +223,7 @@ getvar var = do
   syms <- gets symtab
   case lookup var syms of
     Just x  -> return x
-    Nothing -> error $ "Local variable not in scope: " ++ show var
+    Nothing -> error $ "CODEGEN ERROR: Local variable not in scope: " ++ show var
 
 
 getsymtab :: Codegen SymbolTable
