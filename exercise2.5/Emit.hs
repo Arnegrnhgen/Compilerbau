@@ -173,7 +173,7 @@ cgenExp (S.ETyped (S.ENEq lhs rhs) typ) = do
                                             case typ of
                                               S.Type_int -> icmp LASTIP.NE lcode rcode
                                               _ -> error $ "TODO ERROR: invalid ne cmp type: " ++ printTree typ
-cgenExp (S.ETyped (S.EApp (S.Id ident) argexprs) typ) = do
+cgenExp (S.ETyped (S.EApp (S.Id ident) argexprs) _) = do
                                                           argcodes <- mapM cgenExp argexprs
                                                           call (externf (LAST.Name ident)) argcodes
 cgenExp e = error $ "TODO ERROR: not implemented: " ++ show e ++ " : " ++ printTree e
