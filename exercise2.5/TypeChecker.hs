@@ -243,11 +243,12 @@ inferExpr (EPrAss structname membername value) = do
                                                    (rhstyp, rhs_a) <- inferExpr value
                                                    when (lhstyp /= rhstyp) $ fail $ "bad struct assignment from " ++ printTree value ++ " to " ++ printTree structname ++ "." ++ printTree membername ++ " (" ++ printTree rhstyp ++ " to " ++ printTree lhstyp ++ ")"
                                                    return (lhstyp, ETyped (EPrAss structname membername rhs_a) lhstyp)
-inferExpr (EAss lhs rhs) = do
+inferExpr (EAss lhs@(EId _) rhs) = do
                              (typlhs, lhs_a) <- inferExpr lhs
                              (typrhs, rhs_a) <- inferExpr rhs
                              when (typlhs /= typrhs) $ fail $ "bad assignment from " ++ printTree rhs ++ " to " ++ printTree lhs ++ " (" ++ printTree typrhs ++ " to " ++ printTree typlhs ++ ")"
                              return (typlhs, ETyped (EAss lhs_a rhs_a) typlhs)
+inferExpr (EAss lhs _) = fail $ "invalid lhs of assignment: " ++ printTree lhs
 inferExpr (ETyped _ _) = fail "invalid ETyped found in AST"
 
 
