@@ -10,7 +10,7 @@ cd "$SCRIPTPATH"
 
 echo "Starting tests..."
 
-for filename in ./test_*.cc; do
+for filename in ./test_**.cc; do
 	echo -n "Running test $filename..."
 	
 	clang "$filename" -o "$filename.clang.bin"
