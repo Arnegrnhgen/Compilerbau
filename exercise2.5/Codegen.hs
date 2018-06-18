@@ -285,6 +285,13 @@ icmp :: LASTIP.IntegerPredicate -> LAST.Operand -> LAST.Operand -> Codegen LAST.
 icmp cond a b = instr $ LAST.ICmp cond a b []
 
 
+bAnd :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
+bAnd a b = instr $ LAST.And a b []
+
+
+bOr :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
+bOr a b = instr $ LAST.Or a b []
+
 br :: LAST.Name -> Codegen (LAST.Named LAST.Terminator)
 br val = terminator $ LAST.Do $ LAST.Br val []
 

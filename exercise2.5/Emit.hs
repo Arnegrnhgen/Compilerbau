@@ -234,6 +234,14 @@ cgenExp (S.ETyped (S.EGtWq lhs rhs) typ) = do
                                                S.Type_int -> icmp LASTIP.SGE lcode rcode
                                                S.Type_double -> fcmp LASTFP.OGE lcode rcode
                                                _ -> error $ "CODEGEN ERROR: invalid gteq typ: " ++ printTree typ
+cgenExp (S.ETyped (S.EAnd lhs rhs) _) = do
+                                          lcode <- cgenExp lhs
+                                          rcode <- cgenExp rhs
+                                          bAnd lcode rcode
+cgenExp (S.ETyped (S.EOr lhs rhs) _) = do
+                                         lcode <- cgenExp lhs
+                                         rcode <- cgenExp rhs
+                                         bOr lcode rcode
 
 cgenExp e@(S.ETrue) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
 cgenExp e@(S.EFalse) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
