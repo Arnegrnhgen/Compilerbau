@@ -15,7 +15,7 @@ import qualified LLVM.Module as LMOD
 import qualified LLVM.AST.Float as LASTF
 import qualified LLVM.Internal.Context as LINTC
 import qualified LLVM.AST.IntegerPredicate as LASTIP
---import qualified LLVM.AST.FloatingPointPredicate as LASTFP
+import qualified LLVM.AST.FloatingPointPredicate as LASTFP
 
 
 
@@ -206,6 +206,34 @@ cgenExp (S.ETyped (S.EPDecr expr) typ) = do
                                              S.Type_int -> isub code one
                                              S.Type_double -> fsub code one
                                              _ -> error $ "CODEGEN ERROR: invalid pdecr typ: " ++ printTree typ
+cgenExp (S.ETyped (S.ELt lhs rhs) typ) = do
+                                           lcode <- cgenExp lhs
+                                           rcode <- cgenExp rhs
+                                           case typ of
+                                             S.Type_int -> icmp LASTIP.SLT lcode rcode
+                                             S.Type_double -> fcmp LASTFP.OLT lcode rcode
+                                             _ -> error $ "CODEGEN ERROR: invalid lt typ: " ++ printTree typ
+cgenExp (S.ETyped (S.EGt lhs rhs) typ) = do
+                                           lcode <- cgenExp lhs
+                                           rcode <- cgenExp rhs
+                                           case typ of
+                                             S.Type_int -> icmp LASTIP.SGT lcode rcode
+                                             S.Type_double -> fcmp LASTFP.OGT lcode rcode
+                                             _ -> error $ "CODEGEN ERROR: invalid gt typ: " ++ printTree typ
+cgenExp (S.ETyped (S.ELtEq lhs rhs) typ) = do
+                                             lcode <- cgenExp lhs
+                                             rcode <- cgenExp rhs
+                                             case typ of
+                                               S.Type_int -> icmp LASTIP.SLE lcode rcode
+                                               S.Type_double -> fcmp LASTFP.OLE lcode rcode
+                                               _ -> error $ "CODEGEN ERROR: invalid lteq typ: " ++ printTree typ
+cgenExp (S.ETyped (S.EGtWq lhs rhs) typ) = do
+                                             lcode <- cgenExp lhs
+                                             rcode <- cgenExp rhs
+                                             case typ of
+                                               S.Type_int -> icmp LASTIP.SGE lcode rcode
+                                               S.Type_double -> fcmp LASTFP.OGE lcode rcode
+                                               _ -> error $ "CODEGEN ERROR: invalid gteq typ: " ++ printTree typ
 
 cgenExp e@(S.ETrue) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
 cgenExp e@(S.EFalse) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
