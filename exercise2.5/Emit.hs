@@ -163,6 +163,7 @@ cgenExp (S.ETyped (S.EAss (S.ETyped (S.EId (S.Id ident)) _) rhs) _) = do
                                                                              var <- getvar ident
                                                                              _ <- store var rhs_code
                                                                              return rhs_code
+cgenExp e@(S.ETyped (S.EAss _ _) _) = error $ "CODEGEN ERROR: unsupported assigment lhs: " ++ show e ++ " ::: " ++ printTree e
 cgenExp (S.ETyped (S.EEq lhs rhs) typ) = do
                                            lcode <- cgenExp lhs
                                            rcode <- cgenExp rhs
@@ -243,6 +244,9 @@ cgenExp (S.ETyped (S.EOr lhs rhs) _) = do
                                          rcode <- cgenExp rhs
                                          bOr lcode rcode
 
+
+cgenExp e@(S.ETyped (S.ETyped _ _) _) = error $ "CODEGEN ERROR: unsupported double nested typed expression: " ++ show e ++ " ::: " ++ printTree e
+
 cgenExp e@(S.ETrue) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
 cgenExp e@(S.EFalse) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
 cgenExp e@(S.EInt _) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
@@ -268,4 +272,3 @@ cgenExp e@(S.EAnd _ _) = error $ "CODEGEN ERROR: untyped expression not supporte
 cgenExp e@(S.EOr _ _) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
 cgenExp e@(S.EPrAss _ _ _) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
 cgenExp e@(S.EAss _ _) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
---cgenExp e = error $ "TODO ERROR: not implemented: " ++ show e ++ " ::: " ++ printTree e
