@@ -46,10 +46,10 @@ zero :: LAST.Operand
 zero = cons $ LASTC.Int 32 0
 
 false :: LAST.Operand
-false = zero
+false = cons $ LASTC.Int 1 0
 
 true :: LAST.Operand
-true = one
+true = cons $ LASTC.Int 1 1
 
 
 data CodegenState

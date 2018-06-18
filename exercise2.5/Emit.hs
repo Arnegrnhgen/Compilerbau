@@ -168,14 +168,18 @@ cgenExp (S.ETyped (S.EEq lhs rhs) typ) = do
                                            rcode <- cgenExp rhs
                                            case typ of
                                              S.Type_int -> icmp LASTIP.EQ lcode rcode
+                                             S.Type_bool -> icmp LASTIP.EQ lcode rcode
                                              _ -> error $ "TODO ERROR: invalid eq cmp type: " ++ printTree typ
 cgenExp (S.ETyped (S.ENEq lhs rhs) typ) = do
                                             lcode <- cgenExp lhs
                                             rcode <- cgenExp rhs
                                             case typ of
                                               S.Type_int -> icmp LASTIP.NE lcode rcode
+                                              S.Type_bool -> icmp LASTIP.NE lcode rcode
                                               _ -> error $ "TODO ERROR: invalid ne cmp type: " ++ printTree typ
 cgenExp (S.ETyped (S.EApp (S.Id ident) argexprs) _) = do
                                                           argcodes <- mapM cgenExp argexprs
                                                           call (externf (LAST.Name ident)) argcodes
+cgenExp (S.ETyped S.EFalse _) = return false
+cgenExp (S.ETyped S.ETrue _) = return true
 cgenExp e = error $ "TODO ERROR: not implemented: " ++ show e ++ " ::: " ++ printTree e
