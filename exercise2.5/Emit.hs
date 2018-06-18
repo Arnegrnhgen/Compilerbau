@@ -35,7 +35,7 @@ convertType S.Type_void = Codegen.void
 convertType S.Type_bool = Codegen.bool
 convertType S.Type_int = Codegen.int
 convertType S.Type_double = Codegen.double
-convertType (S.TypeId _) = error $ "TODO ERROR: structs no yet convertable" --TODO structs
+convertType (S.TypeId (S.Id ident)) = LAST.NamedTypeReference (LAST.Name ident)
 
 
 codegenTop :: S.Def -> LLVM ()
@@ -51,7 +51,9 @@ codegenTop (S.DFun rettyp (S.Id ident) args stmts) = define (convertType rettyp)
         assign ident' var
       cgenStmts stmts
       --ret $ one
-codegenTop (S.DStruct _ _) = error $ "TODO ERROR: structs not yet implemented" --TODO
+codegenTop (S.DStruct (S.Id ident) fields) = structDefine ident types
+  where
+    types = map (\(S.FDecl typ _) -> convertType typ) fields
 
 
 cgenStmts :: [S.Stm] -> Codegen ()
@@ -176,4 +178,4 @@ cgenExp (S.ETyped (S.ENEq lhs rhs) typ) = do
 cgenExp (S.ETyped (S.EApp (S.Id ident) argexprs) _) = do
                                                           argcodes <- mapM cgenExp argexprs
                                                           call (externf (LAST.Name ident)) argcodes
-cgenExp e = error $ "TODO ERROR: not implemented: " ++ show e ++ " : " ++ printTree e
+cgenExp e = error $ "TODO ERROR: not implemented: " ++ show e ++ " ::: " ++ printTree e

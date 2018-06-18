@@ -141,6 +141,11 @@ external retty label argtys = addDefn $
   }
 
 
+structDefine :: String -> [LAST.Type] -> LLVM ()
+structDefine name types = addDefn $
+  LAST.TypeDefinition (LAST.Name name) (Just (LAST.StructureType False types))
+
+
 entry :: Codegen LAST.Name
 entry = gets currentBlock
 
@@ -314,3 +319,7 @@ load ptr = instr $ LAST.Load False ptr Nothing 0 []
 
 cons :: LASTC.Constant -> LAST.Operand
 cons = LAST.ConstantOperand
+
+
+getElementPtr :: LAST.Operand -> [LAST.Operand] -> Codegen LAST.Operand
+getElementPtr addr indicies = instr $ LAST.GetElementPtr True addr indicies []
