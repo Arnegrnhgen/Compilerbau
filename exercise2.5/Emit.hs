@@ -182,8 +182,30 @@ cgenExp (S.ETyped (S.EApp (S.Id ident) argexprs) _) = do
                                                           call (externf (LAST.Name ident)) argcodes
 cgenExp (S.ETyped S.EFalse _) = return false
 cgenExp (S.ETyped S.ETrue _) = return true
-
-
+cgenExp (S.ETyped (S.EIncr expr) typ) = do
+                                          code <- cgenExp expr
+                                          case typ of
+                                            S.Type_int -> iadd code one
+                                            S.Type_double -> fadd code one
+                                            _ -> error $ "CODEGEN ERROR: invalid incr typ: " ++ printTree typ
+cgenExp (S.ETyped (S.EDecr expr) typ) = do
+                                          code <- cgenExp expr
+                                          case typ of
+                                            S.Type_int -> isub code one
+                                            S.Type_double -> fsub code one
+                                            _ -> error $ "CODEGEN ERROR: invalid decr typ: " ++ printTree typ
+cgenExp (S.ETyped (S.EPIncr expr) typ) = do
+                                           code <- cgenExp expr
+                                           case typ of
+                                             S.Type_int -> iadd code one
+                                             S.Type_double -> fadd code one
+                                             _ -> error $ "CODEGEN ERROR: invalid pincr typ: " ++ printTree typ
+cgenExp (S.ETyped (S.EPDecr expr) typ) = do
+                                           code <- cgenExp expr
+                                           case typ of
+                                             S.Type_int -> isub code one
+                                             S.Type_double -> fsub code one
+                                             _ -> error $ "CODEGEN ERROR: invalid pdecr typ: " ++ printTree typ
 
 cgenExp e@(S.ETrue) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
 cgenExp e@(S.EFalse) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
