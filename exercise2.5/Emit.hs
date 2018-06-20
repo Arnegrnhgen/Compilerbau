@@ -22,7 +22,6 @@ import qualified LLVM.AST.FloatingPointPredicate as LASTFP
     TODO:
 
         - structs
-        - bools
         - lazy execution (|| / &&)
 -}
 
