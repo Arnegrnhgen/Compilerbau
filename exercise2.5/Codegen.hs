@@ -338,6 +338,10 @@ load :: LAST.Operand -> Codegen LAST.Operand
 load ptr = instr $ LAST.Load False ptr Nothing 0 []
 
 
+sitofp :: LAST.Operand -> LAST.Type -> Codegen LAST.Operand
+sitofp ptr typ = instr $ LAST.SIToFP ptr typ []
+
+
 cons :: LASTC.Constant -> LAST.Operand
 cons = LAST.ConstantOperand
 

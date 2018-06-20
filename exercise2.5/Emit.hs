@@ -22,7 +22,6 @@ import qualified LLVM.AST.FloatingPointPredicate as LASTFP
     TODO:
 
         - structs
-        - doubles
         - bools
         - lazy execution (|| / &&)
 -}
@@ -190,6 +189,10 @@ cgenExp (S.ETyped (S.EEq lhs rhs) typ) = do
                                            case typ of
                                              S.Type_int -> icmp LASTIP.EQ lcode rcode
                                              S.Type_bool -> icmp LASTIP.EQ lcode rcode
+                                             S.Type_double -> do
+                                                                lcode' <- convertDouble lcode
+                                                                rcode' <- convertDouble rcode
+                                                                fcmp LASTFP.OEQ lcode' rcode'
                                              _ -> error $ "TODO ERROR: invalid eq cmp type: " ++ printTree typ
 cgenExp (S.ETyped (S.ENEq lhs rhs) typ) = do
                                             lcode <- cgenExp lhs
@@ -197,6 +200,10 @@ cgenExp (S.ETyped (S.ENEq lhs rhs) typ) = do
                                             case typ of
                                               S.Type_int -> icmp LASTIP.NE lcode rcode
                                               S.Type_bool -> icmp LASTIP.NE lcode rcode
+                                              S.Type_double -> do
+                                                                 lcode' <- convertDouble lcode
+                                                                 rcode' <- convertDouble rcode
+                                                                 fcmp LASTFP.ONE lcode' rcode'
                                               _ -> error $ "TODO ERROR: invalid ne cmp type: " ++ printTree typ
 cgenExp (S.ETyped (S.EApp (S.Id ident) argexprs) _) = do
                                                           argcodes <- mapM cgenExp argexprs
@@ -252,28 +259,40 @@ cgenExp (S.ETyped (S.ELt lhs rhs) typ) = do
                                            rcode <- cgenExp rhs
                                            case typ of
                                              S.Type_int -> icmp LASTIP.SLT lcode rcode
-                                             S.Type_double -> fcmp LASTFP.OLT lcode rcode
+                                             S.Type_double -> do
+                                                                lcode' <- convertDouble lcode
+                                                                rcode' <- convertDouble rcode
+                                                                fcmp LASTFP.OLT lcode' rcode'
                                              _ -> error $ "CODEGEN ERROR: invalid lt typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EGt lhs rhs) typ) = do
                                            lcode <- cgenExp lhs
                                            rcode <- cgenExp rhs
                                            case typ of
                                              S.Type_int -> icmp LASTIP.SGT lcode rcode
-                                             S.Type_double -> fcmp LASTFP.OGT lcode rcode
+                                             S.Type_double -> do
+                                                                lcode' <- convertDouble lcode
+                                                                rcode' <- convertDouble rcode
+                                                                fcmp LASTFP.OGT lcode' rcode'
                                              _ -> error $ "CODEGEN ERROR: invalid gt typ: " ++ printTree typ
 cgenExp (S.ETyped (S.ELtEq lhs rhs) typ) = do
                                              lcode <- cgenExp lhs
                                              rcode <- cgenExp rhs
                                              case typ of
                                                S.Type_int -> icmp LASTIP.SLE lcode rcode
-                                               S.Type_double -> fcmp LASTFP.OLE lcode rcode
+                                               S.Type_double -> do
+                                                                  lcode' <- convertDouble lcode
+                                                                  rcode' <- convertDouble rcode
+                                                                  fcmp LASTFP.OLE lcode' rcode'
                                                _ -> error $ "CODEGEN ERROR: invalid lteq typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EGtWq lhs rhs) typ) = do
                                              lcode <- cgenExp lhs
                                              rcode <- cgenExp rhs
                                              case typ of
                                                S.Type_int -> icmp LASTIP.SGE lcode rcode
-                                               S.Type_double -> fcmp LASTFP.OGE lcode rcode
+                                               S.Type_double -> do
+                                                                  lcode' <- convertDouble lcode
+                                                                  rcode' <- convertDouble rcode
+                                                                  fcmp LASTFP.OGE lcode' rcode'
                                                _ -> error $ "CODEGEN ERROR: invalid gteq typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EAnd lhs rhs) _) = do
                                           lcode <- cgenExp lhs
@@ -312,3 +331,9 @@ cgenExp e@(S.EAnd _ _) = error $ "CODEGEN ERROR: untyped expression not supporte
 cgenExp e@(S.EOr _ _) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
 cgenExp e@(S.EPrAss _ _ _) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
 cgenExp e@(S.EAss _ _) = error $ "CODEGEN ERROR: untyped expression not supported: " ++ show e ++ " ::: " ++ printTree e
+
+
+convertDouble :: LAST.Operand -> Codegen (LAST.Operand)
+convertDouble o@(LAST.LocalReference (LAST.IntegerType _) _) = sitofp o double
+convertDouble o@(LAST.ConstantOperand (LASTC.Int _ _)) = sitofp o double
+convertDouble o = return o
