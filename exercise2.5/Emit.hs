@@ -22,7 +22,6 @@ import qualified LLVM.AST.FloatingPointPredicate as LASTFP
     TODO:
 
         - structs
-        - lazy execution (|| / &&)
 -}
 
 
@@ -295,12 +294,44 @@ cgenExp (S.ETyped (S.EGtWq lhs rhs) typ) = do
                                                _ -> error $ "CODEGEN ERROR: invalid gteq typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EAnd lhs rhs) _) = do
                                           lcode <- cgenExp lhs
+                                          cond <- icmp LASTIP.EQ lcode true
+                                          startblock <- getBlock
+
+
+                                          unlazy <- addBlock "and.unlazy"
+                                          exit <- addBlock "and.exit"
+
+
+                                          _ <- cbr cond unlazy exit
+
+                                          _ <- setBlock unlazy
+                                          unlazyblock <- getBlock
                                           rcode <- cgenExp rhs
-                                          bAnd lcode rcode
+                                          result <- bAnd lcode rcode
+                                          _ <- br exit
+
+                                          _ <- setBlock exit
+                                          phi bool [(false, startblock), (result, unlazyblock)]
 cgenExp (S.ETyped (S.EOr lhs rhs) _) = do
                                          lcode <- cgenExp lhs
+                                         cond <- icmp LASTIP.EQ lcode false
+                                         startblock <- getBlock
+
+
+                                         unlazy <- addBlock "or.unlazy"
+                                         exit <- addBlock "or.exit"
+
+
+                                         _ <- cbr cond unlazy exit
+
+                                         _ <- setBlock unlazy
+                                         unlazyblock <- getBlock
                                          rcode <- cgenExp rhs
-                                         bOr lcode rcode
+                                         result <- bOr lcode rcode
+                                         _ <- br exit
+
+                                         _ <- setBlock exit
+                                         phi bool [(true, startblock), (result, unlazyblock)]
 
 
 cgenExp e@(S.ETyped (S.ETyped _ _) _) = error $ "CODEGEN ERROR: unsupported double nested typed expression: " ++ show e ++ " ::: " ++ printTree e

@@ -346,5 +346,9 @@ cons :: LASTC.Constant -> LAST.Operand
 cons = LAST.ConstantOperand
 
 
+phi :: LAST.Type -> [(LAST.Operand, LAST.Name)] -> Codegen LAST.Operand
+phi ty incoming = instr $ LAST.Phi ty incoming []
+
+
 getElementPtr :: LAST.Operand -> [LAST.Operand] -> Codegen LAST.Operand
 getElementPtr addr indicies = instr $ LAST.GetElementPtr True addr indicies []
