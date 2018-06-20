@@ -6,6 +6,6 @@ struct a {
 
 int main() {
 	a s;
-	//s.b = 10;
+	s.b = 10;
 	return s.b;
 }

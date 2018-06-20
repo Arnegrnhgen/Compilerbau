@@ -31,8 +31,8 @@ check s = case pProgram (myLexer s) of
                           Bad err -> do hPutStrLn stderr "TYPE ERROR"
                                         hPutStrLn stderr err
                                         exitFailure 
-                          Ok tree_a -> do
-                                         code <- codegen initModule tree_a
+                          Ok (tree_a, structs) -> do
+                                         code <- codegen initModule tree_a structs
                                          putStrLn code
                                          return ()
 

@@ -4,6 +4,7 @@ module Codegen where
 
 --import AbsCPP
 --import ErrM
+import TypeChecker
 import qualified Data.Map as Map
 import Control.Monad.State
 import Data.List
@@ -62,6 +63,17 @@ true = cons $ LASTC.Int 1 1
 --voidValue = cons $ LAST.VoidType
 
 
+data StructInfo
+  = StructInfo {
+    members   :: Map.Map String StructMemberInfo
+  } deriving Show
+
+data StructMemberInfo
+  = StructMemberInfo {
+    sidx   :: Int
+  , styp    :: LAST.Type
+  } deriving Show
+
 data CodegenState
   = CodegenState {
     currentBlock :: LAST.Name                     -- Name of the active block to append to
@@ -70,6 +82,8 @@ data CodegenState
   , blockCount   :: Int                           -- Count of basic blocks
   , count        :: Word                          -- Count of unnamed instructions
   , names        :: Names                         -- Name Supply
+  , structsRO    :: Structs
+  , structInfos  :: Map.Map String StructInfo
   } deriving Show
 
 
@@ -117,11 +131,11 @@ entryBlockName = "entry"
 
 
 emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (LAST.Name entryBlockName) Map.empty [] 1 0 Map.empty
+emptyCodegen = CodegenState (LAST.Name entryBlockName) Map.empty [] 1 0 Map.empty Map.empty Map.empty
 
 
-execCodegen :: [(String, LAST.Operand)] -> Codegen a -> CodegenState
-execCodegen vars m = execState (runCodegen m) emptyCodegen { symtab = vars }
+execCodegen :: [(String, LAST.Operand)] -> Structs -> Codegen a -> CodegenState
+execCodegen vars structs m = execState (runCodegen m) emptyCodegen { symtab = vars, structsRO = structs }
 
 
 addDefn :: LAST.Definition -> LLVM ()

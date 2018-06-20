@@ -308,8 +308,8 @@ checkDef (DFun rettype i args stmts) = do
 checkDef d@(DStruct _ _) = return d
 
 
-typecheck :: Program -> Err Program
+typecheck :: Program -> Err (Program, Structs)
 typecheck (PDefs defs) = do
                            sigEnv <- execStateT (parseSigs defs) newEnv
-                           adefs <- evalStateT (checkDefs defs) sigEnv
-                           return (PDefs adefs)
+                           (adefs, finalEnv) <- runStateT (checkDefs defs) sigEnv
+                           return (PDefs adefs, structures finalEnv)

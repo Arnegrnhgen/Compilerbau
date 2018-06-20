@@ -4,6 +4,9 @@ import Codegen
 import qualified AbsCPP as S
 --import ErrM
 import PrintCPP
+import TypeChecker
+
+import qualified Data.Map as Map
 
 --import Control.Monad (forM)
 import Control.Monad.Except
@@ -30,11 +33,11 @@ import qualified LLVM.AST.FloatingPointPredicate as LASTFP
 liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
-codegen :: LAST.Module -> S.Program -> IO String
-codegen modo (S.PDefs fns) = LINTC.withContext $ \context ->
+codegen :: LAST.Module -> S.Program -> Structs -> IO String
+codegen modo (S.PDefs fns) structs = LINTC.withContext $ \context ->
   liftError $ LMOD.withModuleFromAST context newast $ \m -> LMOD.moduleLLVMAssembly m
   where
-    modn    = mapM codegenTop fns
+    modn    = mapM (codegenTop structs) fns
     newast = runLLVM modo modn
 
 
@@ -46,11 +49,11 @@ convertType S.Type_double = Codegen.double
 convertType (S.TypeId (S.Id ident)) = LAST.NamedTypeReference (LAST.Name ident)
 
 
-codegenTop :: S.Def -> LLVM ()
-codegenTop (S.DFun rettyp (S.Id ident) args stmts) = define (convertType rettyp) ident largs bls
+codegenTop :: Structs -> S.Def -> LLVM ()
+codegenTop structs (S.DFun rettyp (S.Id ident) args stmts) = define (convertType rettyp) ident largs bls
   where
     largs = map (\(S.ADecl typ' (S.Id ident')) -> (convertType typ', LAST.Name ident')) args
-    bls = createBlocks $ execCodegen [] $ do
+    bls = createBlocks $ execCodegen [] structs $ do
       entryName <- addBlock entryBlockName
       _ <- setBlock entryName
       forM_ args $ \(S.ADecl typ' (S.Id ident')) -> do
@@ -61,7 +64,11 @@ codegenTop (S.DFun rettyp (S.Id ident) args stmts) = define (convertType rettyp)
       case rettyp of
         S.Type_void -> retVoid
         _ -> ret $ defaultValue rettyp
-codegenTop (S.DStruct (S.Id ident) fields) = structDefine ident types
+codegenTop _ (S.DStruct (S.Id ident) fields) = do
+    let indexFields = zip fields [0..]
+    let members = Map.fromList [(name, StructMemberInfo idx (convertType typ)) | (S.FDecl typ (S.Id name), idx) <- indexFields]
+    modify $ \s -> s { structInfos = Map.insert ident members structInfos }
+    structDefine ident types
   where
     types = map (\(S.FDecl typ _) -> convertType typ) fields
 
