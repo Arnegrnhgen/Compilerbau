@@ -24,7 +24,7 @@ import qualified LLVM.AST.FloatingPointPredicate as LASTFP
         - structs
         - doubles
         - bools
-        - increment / decrement
+        - lazy execution (|| / &&)
 -}
 
 
@@ -73,7 +73,7 @@ defaultValue :: S.Type -> LAST.Operand
 defaultValue S.Type_bool = false
 defaultValue S.Type_int = intZero
 defaultValue S.Type_double = doubleZero
---defaultValue S.Type_void = voidValue
+defaultValue S.Type_void = error $ "CODEGEN ERROR: should not happen"
 defaultValue (S.TypeId _) = error $ "TODO: structs"
 
 cgenStmts :: [S.Stm] -> Codegen ()
@@ -203,30 +203,50 @@ cgenExp (S.ETyped (S.EApp (S.Id ident) argexprs) _) = do
                                                           call (externf (LAST.Name ident)) argcodes
 cgenExp (S.ETyped S.EFalse _) = return false
 cgenExp (S.ETyped S.ETrue _) = return true
-cgenExp (S.ETyped (S.EIncr expr) typ) = do
-                                          code <- cgenExp expr
-                                          case typ of
-                                            S.Type_int -> iadd code intOne
-                                            S.Type_double -> fadd code doubleOne
+cgenExp (S.ETyped (S.EIncr (S.ETyped (S.EId (S.Id ident)) _)) typ) = do
+                                        var <- getvar ident
+                                        code <- load var
+                                        case typ of
+                                            S.Type_int -> do
+                                                            add <- iadd code intOne
+                                                            _ <- store var add
+                                                            return add
+                                            S.Type_double -> do
+                                                               add <- fadd code doubleOne
+                                                               _ <- store var add
+                                                               return add
                                             _ -> error $ "CODEGEN ERROR: invalid incr typ: " ++ printTree typ
-cgenExp (S.ETyped (S.EDecr expr) typ) = do
-                                          code <- cgenExp expr
+cgenExp (S.ETyped (S.EIncr _) _) = error $ "CODEGEN ERROR: incr only for identifiers"
+cgenExp (S.ETyped (S.EDecr (S.ETyped (S.EId (S.Id ident)) _)) typ) = do
+                                          var <- getvar ident
+                                          code <- load var
                                           case typ of
-                                            S.Type_int -> isub code intOne
-                                            S.Type_double -> fsub code doubleOne
+                                            S.Type_int -> do
+                                                            sub <- isub code intOne
+                                                            _ <- store var sub
+                                                            return sub
+                                            S.Type_double -> do
+                                                               sub <- fsub code doubleOne
+                                                               _ <- store var sub
+                                                               return sub
                                             _ -> error $ "CODEGEN ERROR: invalid decr typ: " ++ printTree typ
-cgenExp (S.ETyped (S.EPIncr expr) typ) = do
-                                           code <- cgenExp expr
+cgenExp (S.ETyped (S.EDecr _) _) = error $ "CODEGEN ERROR: decr only for identifiers"
+cgenExp (S.ETyped (S.EPIncr (S.ETyped (S.EId (S.Id ident)) _)) typ) = do
+                                           var <- getvar ident
+                                           code <- load var
                                            case typ of
-                                             S.Type_int -> iadd code intOne
-                                             S.Type_double -> fadd code doubleOne
+                                             S.Type_int -> iadd code intOne >>= store var >> return code
+                                             S.Type_double -> fadd var doubleOne >>= store var >> return code
                                              _ -> error $ "CODEGEN ERROR: invalid pincr typ: " ++ printTree typ
-cgenExp (S.ETyped (S.EPDecr expr) typ) = do
-                                           code <- cgenExp expr
-                                           case typ of
-                                             S.Type_int -> isub code intOne
-                                             S.Type_double -> fsub code doubleOne
-                                             _ -> error $ "CODEGEN ERROR: invalid pdecr typ: " ++ printTree typ
+cgenExp (S.ETyped (S.EPIncr _) _) = error $ "CODEGEN ERROR: post incr only for identifiers"
+cgenExp (S.ETyped (S.EPDecr (S.ETyped (S.EId (S.Id ident)) _)) typ) = do
+                                            var <- getvar ident
+                                            code <- load var
+                                            case typ of
+                                              S.Type_int -> isub code intOne >>= store var >> return code
+                                              S.Type_double -> fsub code doubleOne >>= store var >> return code
+                                              _ -> error $ "CODEGEN ERROR: invalid pdecr typ: " ++ printTree typ
+cgenExp (S.ETyped (S.EPDecr _) _) = error $ "CODEGEN ERROR: post decr only for identifiers"
 cgenExp (S.ETyped (S.ELt lhs rhs) typ) = do
                                            lcode <- cgenExp lhs
                                            rcode <- cgenExp rhs
