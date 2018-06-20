@@ -1,11 +1,10 @@
 // void function
 
-void foo(int i) {
-	i = i +10;
+void foo() {
 }
 
 int main() {
-	foo(5);
+	foo();
 
 	return 1;
 }

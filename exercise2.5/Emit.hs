@@ -18,6 +18,17 @@ import qualified LLVM.AST.IntegerPredicate as LASTIP
 import qualified LLVM.AST.FloatingPointPredicate as LASTFP
 
 
+{-
+    TODO:
+
+        - structs
+        - doubles
+        - bools
+        - increment / decrement
+-}
+
+
+
 
 liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
@@ -50,14 +61,23 @@ codegenTop (S.DFun rettyp (S.Id ident) args stmts) = define (convertType rettyp)
         _ <- store var (local (LAST.Name ident'))
         assign ident' var
       cgenStmts stmts
-      --ret $ one
+      case rettyp of
+        S.Type_void -> retVoid
+        _ -> ret $ defaultValue rettyp
 codegenTop (S.DStruct (S.Id ident) fields) = structDefine ident types
   where
     types = map (\(S.FDecl typ _) -> convertType typ) fields
 
 
+defaultValue :: S.Type -> LAST.Operand
+defaultValue S.Type_bool = false
+defaultValue S.Type_int = intZero
+defaultValue S.Type_double = doubleZero
+--defaultValue S.Type_void = voidValue
+defaultValue (S.TypeId _) = error $ "TODO: structs"
+
 cgenStmts :: [S.Stm] -> Codegen ()
-cgenStmts = mapM_ cgenStmt
+cgenStmts list = mapM_ cgenStmt list
 
 cgenStmt :: S.Stm -> Codegen ()
 cgenStmt (S.SReturn e) = do
@@ -186,26 +206,26 @@ cgenExp (S.ETyped S.ETrue _) = return true
 cgenExp (S.ETyped (S.EIncr expr) typ) = do
                                           code <- cgenExp expr
                                           case typ of
-                                            S.Type_int -> iadd code one
-                                            S.Type_double -> fadd code one
+                                            S.Type_int -> iadd code intOne
+                                            S.Type_double -> fadd code doubleOne
                                             _ -> error $ "CODEGEN ERROR: invalid incr typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EDecr expr) typ) = do
                                           code <- cgenExp expr
                                           case typ of
-                                            S.Type_int -> isub code one
-                                            S.Type_double -> fsub code one
+                                            S.Type_int -> isub code intOne
+                                            S.Type_double -> fsub code doubleOne
                                             _ -> error $ "CODEGEN ERROR: invalid decr typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EPIncr expr) typ) = do
                                            code <- cgenExp expr
                                            case typ of
-                                             S.Type_int -> iadd code one
-                                             S.Type_double -> fadd code one
+                                             S.Type_int -> iadd code intOne
+                                             S.Type_double -> fadd code doubleOne
                                              _ -> error $ "CODEGEN ERROR: invalid pincr typ: " ++ printTree typ
 cgenExp (S.ETyped (S.EPDecr expr) typ) = do
                                            code <- cgenExp expr
                                            case typ of
-                                             S.Type_int -> isub code one
-                                             S.Type_double -> fsub code one
+                                             S.Type_int -> isub code intOne
+                                             S.Type_double -> fsub code doubleOne
                                              _ -> error $ "CODEGEN ERROR: invalid pdecr typ: " ++ printTree typ
 cgenExp (S.ETyped (S.ELt lhs rhs) typ) = do
                                            lcode <- cgenExp lhs

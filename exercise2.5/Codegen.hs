@@ -10,6 +10,7 @@ import Data.List
 import Data.Function
 
 import qualified LLVM.AST as LAST
+import qualified LLVM.AST.Float as LASTF
 import qualified LLVM.AST.Global as LASTG
 import qualified LLVM.AST.Linkage as LASTL
 import qualified LLVM.AST.Constant as LASTC
@@ -39,17 +40,26 @@ void = LAST.VoidType
 bool :: LAST.Type
 bool = LAST.IntegerType 1
 
-one :: LAST.Operand
-one = cons $ LASTC.Int 32 1
+intOne :: LAST.Operand
+intOne = cons $ LASTC.Int 32 1
 
-zero :: LAST.Operand
-zero = cons $ LASTC.Int 32 0
+intZero :: LAST.Operand
+intZero = cons $ LASTC.Int 32 0
+
+doubleOne :: LAST.Operand
+doubleOne = cons $ LASTC.Float (LASTF.Double 1)
+
+doubleZero :: LAST.Operand
+doubleZero = cons $ LASTC.Float (LASTF.Double 0)
 
 false :: LAST.Operand
 false = cons $ LASTC.Int 1 0
 
 true :: LAST.Operand
 true = cons $ LASTC.Int 1 1
+
+--voidValue :: LAST.Operand
+--voidValue = cons $ LAST.VoidType
 
 
 data CodegenState
@@ -302,6 +312,10 @@ cbr cond tr fl = terminator $ LAST.Do $ LAST.CondBr cond tr fl []
 
 ret :: LAST.Operand -> Codegen (LAST.Named LAST.Terminator)
 ret val = terminator $ LAST.Do $ LAST.Ret (Just val) []
+
+
+retVoid :: Codegen (LAST.Named LAST.Terminator)
+retVoid = terminator $ LAST.Do $ LAST.Ret Nothing []
 
 
 toArgs :: [LAST.Operand] -> [(LAST.Operand, [LASTA.ParameterAttribute])]
