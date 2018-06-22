@@ -64,11 +64,7 @@ codegenTop structs (S.DFun rettyp (S.Id ident) args stmts) = define (convertType
       case rettyp of
         S.Type_void -> retVoid
         _ -> ret $ defaultValue rettyp
-codegenTop _ (S.DStruct (S.Id ident) fields) = do
-    let indexFields = zip fields [0..]
-    let members = Map.fromList [(name, StructMemberInfo idx (convertType typ)) | (S.FDecl typ (S.Id name), idx) <- indexFields]
-    modify $ \s -> s { structInfos = Map.insert ident members structInfos }
-    structDefine ident types
+codegenTop _ (S.DStruct (S.Id ident) fields) = structDefine ident types
   where
     types = map (\(S.FDecl typ _) -> convertType typ) fields
 
@@ -78,7 +74,7 @@ defaultValue S.Type_bool = false
 defaultValue S.Type_int = intZero
 defaultValue S.Type_double = doubleZero
 defaultValue S.Type_void = error $ "CODEGEN ERROR: should not happen"
-defaultValue (S.TypeId _) = error $ "TODO: structs"
+defaultValue (S.TypeId _) = error $ "TODO: default return for structs"
 
 cgenStmts :: [S.Stm] -> Codegen ()
 cgenStmts list = mapM_ cgenStmt list
@@ -339,7 +335,20 @@ cgenExp (S.ETyped (S.EOr lhs rhs) _) = do
 
                                          _ <- setBlock exit
                                          phi bool [(true, startblock), (result, unlazyblock)]
-
+cgenExp (S.ETyped (S.EProj (S.ETyped (S.EId (S.Id structvarident)) (S.TypeId structtype)) (S.EId member)) _) = do
+    var <- getvar structvarident
+    structs <- getStructs
+    pos <- getElementPtr var (computerStructIndicies structs structtype member)
+    load pos
+cgenExp (S.ETyped e@(S.EProj _ _) _) = error $ "CODEGEN ERROR: unsupported struct projection: " ++ show e ++ " ::: " ++ printTree e
+cgenExp (S.ETyped (S.EPrAss (S.ETyped (S.EId (S.Id structvarident)) (S.TypeId structtype)) (S.EId member) rhs) _) = do
+    rcode <- cgenExp rhs
+    var <- getvar structvarident
+    structs <- getStructs
+    pos <- getElementPtr var (computerStructIndicies structs structtype member)
+    _ <- store pos rcode
+    return rcode
+cgenExp (S.ETyped e@(S.EPrAss _ _ _) _) = error $ "CODEGEN ERROR: unsupported struct assignment: " ++ show e ++ " ::: " ++ printTree e
 
 cgenExp e@(S.ETyped (S.ETyped _ _) _) = error $ "CODEGEN ERROR: unsupported double nested typed expression: " ++ show e ++ " ::: " ++ printTree e
 
@@ -374,3 +383,13 @@ convertDouble :: LAST.Operand -> Codegen (LAST.Operand)
 convertDouble o@(LAST.LocalReference (LAST.IntegerType _) _) = sitofp o double
 convertDouble o@(LAST.ConstantOperand (LASTC.Int _ _)) = sitofp o double
 convertDouble o = return o
+
+
+computerStructIndicies :: Structs -> S.Id -> S.Id -> [LAST.Operand]
+computerStructIndicies structs structtype member = [intZero, cons $ LASTC.Int 32 memberidx]
+    where
+        memberidx = case Map.lookup structtype structs of
+                      Nothing -> error $ "CODEGEN ERROR: No such struct found: " ++ printTree structtype
+                      Just s -> case Map.lookup member s of
+                                  Nothing -> error $ "CODEGEN ERROR: No such member found in struct: " ++ printTree member ++ " in " ++ printTree structtype
+                                  Just (_,ident) -> ident

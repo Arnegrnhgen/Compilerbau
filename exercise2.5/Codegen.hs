@@ -62,18 +62,6 @@ true = cons $ LASTC.Int 1 1
 --voidValue :: LAST.Operand
 --voidValue = cons $ LAST.VoidType
 
-
-data StructInfo
-  = StructInfo {
-    members   :: Map.Map String StructMemberInfo
-  } deriving Show
-
-data StructMemberInfo
-  = StructMemberInfo {
-    sidx   :: Int
-  , styp    :: LAST.Type
-  } deriving Show
-
 data CodegenState
   = CodegenState {
     currentBlock :: LAST.Name                     -- Name of the active block to append to
@@ -83,7 +71,6 @@ data CodegenState
   , count        :: Word                          -- Count of unnamed instructions
   , names        :: Names                         -- Name Supply
   , structsRO    :: Structs
-  , structInfos  :: Map.Map String StructInfo
   } deriving Show
 
 
@@ -131,7 +118,7 @@ entryBlockName = "entry"
 
 
 emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (LAST.Name entryBlockName) Map.empty [] 1 0 Map.empty Map.empty Map.empty
+emptyCodegen = CodegenState (LAST.Name entryBlockName) Map.empty [] 1 0 Map.empty Map.empty
 
 
 execCodegen :: [(String, LAST.Operand)] -> Structs -> Codegen a -> CodegenState
@@ -209,6 +196,10 @@ setBlock bname = do
 
 getBlock :: Codegen LAST.Name
 getBlock = gets currentBlock
+
+
+getStructs :: Codegen Structs
+getStructs = gets structsRO
 
 
 modifyBlock :: BlockState -> Codegen ()

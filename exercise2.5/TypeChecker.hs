@@ -14,7 +14,7 @@ data Env = Env {
 type Sigs = Map.Map Id ([Type],Type)
 type Context = Map.Map Id Type
 type Structs = Map.Map Id Struct
-type Struct = Map.Map Id Type
+type Struct = Map.Map Id (Type,Integer)
 
 
 newEnv :: Env
@@ -31,10 +31,10 @@ typeExists (TypeId ident) = do
 typeExists _ = return ()
 
 
-initStructField :: Struct -> Field -> StateT Env Err Struct
-initStructField s (FDecl typ ident) = do
+initStructField :: Struct -> (Field,Integer) -> StateT Env Err Struct
+initStructField s ((FDecl typ ident), idx) = do
                                         typeExists typ
-                                        case Map.insertLookupWithKey (\_ a _ -> a) ident typ s of
+                                        case Map.insertLookupWithKey (\_ a _ -> a) ident (typ,idx) s of
                                           (Nothing, m2) -> return m2
                                           (Just _, _) -> fail $ "struct member " ++ printTree ident ++ " already defined"
 
@@ -55,7 +55,7 @@ parseSigs (d:ds) = do
                                                    structs <- gets structures
                                                    case Map.lookup ident structs of
                                                      Nothing -> do
-                                                                  f <- foldM initStructField Map.empty fields
+                                                                  f <- foldM initStructField Map.empty (zip fields [0..])
                                                                   modify $ \s -> s { structures = Map.insert ident f structs }
                                                      Just _ -> fail $ "struct " ++ printTree ident ++ " already defined"
                      parseSigs ds
@@ -128,7 +128,7 @@ lookUpStructField membername (TypeId structname) = do
                                                        Nothing -> fail $ "struct " ++ show structname ++ " not found"
                                                        Just struct -> case Map.lookup membername struct of
                                                                         Nothing -> fail $ "struct member " ++ show membername ++ " of struct " ++ show structname ++ " not found"
-                                                                        Just field -> return field
+                                                                        Just (field,_) -> return field
 lookUpStructField _ structname = fail $ "identifier " ++ printTree structname ++ " is not a struct name"
 
 
@@ -239,10 +239,10 @@ inferExpr (EOr exp1 exp2) = do
                               (typ, exp1_a, exp2_a) <- inferBin [Type_int, Type_double, Type_bool] exp1 exp2
                               return (Type_bool, ETyped (EOr exp1_a exp2_a) typ)
 inferExpr (EPrAss structname membername value) = do
-                                                   (lhstyp, _) <- inferExpr (EProj structname membername)
+                                                   (lhstyp, (ETyped (EProj struct _) _)) <- inferExpr (EProj structname membername)
                                                    (rhstyp, rhs_a) <- inferExpr value
                                                    when (lhstyp /= rhstyp) $ fail $ "bad struct assignment from " ++ printTree value ++ " to " ++ printTree structname ++ "." ++ printTree membername ++ " (" ++ printTree rhstyp ++ " to " ++ printTree lhstyp ++ ")"
-                                                   return (lhstyp, ETyped (EPrAss structname membername rhs_a) lhstyp)
+                                                   return (lhstyp, ETyped (EPrAss struct membername rhs_a) lhstyp)
 inferExpr (EAss lhs@(EId _) rhs) = do
                              (typlhs, lhs_a) <- inferExpr lhs
                              (typrhs, rhs_a) <- inferExpr rhs
