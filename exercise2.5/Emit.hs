@@ -74,7 +74,7 @@ defaultValue S.Type_bool = false
 defaultValue S.Type_int = intZero
 defaultValue S.Type_double = doubleZero
 defaultValue S.Type_void = error $ "CODEGEN ERROR: should not happen"
-defaultValue (S.TypeId _) = error $ "TODO: default return for structs"
+defaultValue (S.TypeId _) = error $ "CODEGEN ERROR: missing return in function returning a struct"
 
 cgenStmts :: [S.Stm] -> Codegen ()
 cgenStmts list = mapM_ cgenStmt list
@@ -335,17 +335,16 @@ cgenExp (S.ETyped (S.EOr lhs rhs) _) = do
 
                                          _ <- setBlock exit
                                          phi bool [(true, startblock), (result, unlazyblock)]
-cgenExp (S.ETyped (S.EProj (S.ETyped (S.EId (S.Id structvarident)) (S.TypeId structtype)) (S.EId member)) _) = do
-    var <- getvar structvarident
-    structs <- getStructs
-    pos <- getElementPtr var (computerStructIndicies structs structtype member)
+cgenExp (S.ETyped (S.EProj lhs (S.EId memberid)) _) = do
+    --structs <- getStructs
+    --var <- getvar structvarident
+    --pos <- getElementPtr var (computeStructIndicies structs structtype member)
+    pos <- computeStructPosition lhs memberid
     load pos
 cgenExp (S.ETyped e@(S.EProj _ _) _) = error $ "CODEGEN ERROR: unsupported struct projection: " ++ show e ++ " ::: " ++ printTree e
-cgenExp (S.ETyped (S.EPrAss (S.ETyped (S.EId (S.Id structvarident)) (S.TypeId structtype)) (S.EId member) rhs) _) = do
+cgenExp (S.ETyped (S.EPrAss lhs (S.EId member) rhs) _) = do
     rcode <- cgenExp rhs
-    var <- getvar structvarident
-    structs <- getStructs
-    pos <- getElementPtr var (computerStructIndicies structs structtype member)
+    pos <- computeStructPosition lhs member
     _ <- store pos rcode
     return rcode
 cgenExp (S.ETyped e@(S.EPrAss _ _ _) _) = error $ "CODEGEN ERROR: unsupported struct assignment: " ++ show e ++ " ::: " ++ printTree e
@@ -385,11 +384,23 @@ convertDouble o@(LAST.ConstantOperand (LASTC.Int _ _)) = sitofp o double
 convertDouble o = return o
 
 
-computerStructIndicies :: Structs -> S.Id -> S.Id -> [LAST.Operand]
-computerStructIndicies structs structtype member = [intZero, cons $ LASTC.Int 32 memberidx]
+computeStructIndicies :: Structs -> S.Id -> S.Id -> [LAST.Operand]
+computeStructIndicies structs structtype member = [intZero, cons $ LASTC.Int 32 memberidx]
     where
         memberidx = case Map.lookup structtype structs of
                       Nothing -> error $ "CODEGEN ERROR: No such struct found: " ++ printTree structtype
                       Just s -> case Map.lookup member s of
                                   Nothing -> error $ "CODEGEN ERROR: No such member found in struct: " ++ printTree member ++ " in " ++ printTree structtype
                                   Just (_,ident) -> ident
+
+
+computeStructPosition :: S.Exp -> S.Id -> Codegen LAST.Operand
+computeStructPosition (S.ETyped (S.EId (S.Id structvarident)) (S.TypeId structtype)) memberid = do
+    structs <- getStructs
+    var <- getvar structvarident
+    getElementPtr var (computeStructIndicies structs structtype memberid)
+computeStructPosition (S.ETyped (S.EProj lhs (S.EId lhsmemberid)) (S.TypeId structtype)) memberid = do
+    structs <- getStructs
+    innerpos <- computeStructPosition lhs lhsmemberid
+    getElementPtr innerpos (computeStructIndicies structs structtype memberid)
+computeStructPosition e m = error $ "CODEGEN ERROR: unsupported struct position: " ++ show e ++ " ::: " ++ printTree e ++ " (at member " ++ printTree m ++ ")"
