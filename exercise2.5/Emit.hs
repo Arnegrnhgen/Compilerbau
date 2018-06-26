@@ -21,15 +21,6 @@ import qualified LLVM.AST.IntegerPredicate as LASTIP
 import qualified LLVM.AST.FloatingPointPredicate as LASTFP
 
 
-{-
-    TODO:
-
-        - structs
--}
-
-
-
-
 liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
@@ -58,7 +49,7 @@ codegenTop structs (S.DFun rettyp (S.Id ident) args stmts) = define (convertType
       _ <- setBlock entryName
       forM_ args $ \(S.ADecl typ' (S.Id ident')) -> do
         var <- alloca (convertType typ')
-        _ <- store var (local (LAST.Name ident'))
+        _ <- store var (local (LAST.Name ident') (convertType typ'))
         assign ident' var
       cgenStmts stmts
       case rettyp of
@@ -194,7 +185,7 @@ cgenExp (S.ETyped (S.EEq lhs rhs) typ) = do
                                                                 lcode' <- convertDouble lcode
                                                                 rcode' <- convertDouble rcode
                                                                 fcmp LASTFP.OEQ lcode' rcode'
-                                             _ -> error $ "TODO ERROR: invalid eq cmp type: " ++ printTree typ
+                                             _ -> error $ "CODEGEN ERROR: invalid eq cmp type: " ++ printTree typ
 cgenExp (S.ETyped (S.ENEq lhs rhs) typ) = do
                                             lcode <- cgenExp lhs
                                             rcode <- cgenExp rhs
@@ -205,10 +196,10 @@ cgenExp (S.ETyped (S.ENEq lhs rhs) typ) = do
                                                                  lcode' <- convertDouble lcode
                                                                  rcode' <- convertDouble rcode
                                                                  fcmp LASTFP.ONE lcode' rcode'
-                                              _ -> error $ "TODO ERROR: invalid ne cmp type: " ++ printTree typ
-cgenExp (S.ETyped (S.EApp (S.Id ident) argexprs) _) = do
+                                              _ -> error $ "CODEGEN ERROR: invalid ne cmp type: " ++ printTree typ
+cgenExp (S.ETyped (S.EApp (S.Id ident) argexprs) typ) = do
                                                           argcodes <- mapM cgenExp argexprs
-                                                          call (externf (LAST.Name ident)) argcodes
+                                                          call (externf (LAST.Name ident) (convertType typ)) argcodes (convertType typ)
 cgenExp (S.ETyped S.EFalse _) = return false
 cgenExp (S.ETyped S.ETrue _) = return true
 cgenExp (S.ETyped (S.EIncr (S.ETyped (S.EId (S.Id ident)) _)) typ) = do
@@ -335,16 +326,16 @@ cgenExp (S.ETyped (S.EOr lhs rhs) _) = do
 
                                          _ <- setBlock exit
                                          phi bool [(true, startblock), (result, unlazyblock)]
-cgenExp (S.ETyped (S.EProj lhs (S.EId memberid)) _) = do
+cgenExp (S.ETyped (S.EProj lhs (S.EId memberid)) typ) = do
     --structs <- getStructs
     --var <- getvar structvarident
     --pos <- getElementPtr var (computeStructIndicies structs structtype member)
-    pos <- computeStructPosition lhs memberid
+    pos <- computeStructPosition lhs memberid typ
     load pos
 cgenExp (S.ETyped e@(S.EProj _ _) _) = error $ "CODEGEN ERROR: unsupported struct projection: " ++ show e ++ " ::: " ++ printTree e
-cgenExp (S.ETyped (S.EPrAss lhs (S.EId member) rhs) _) = do
+cgenExp (S.ETyped (S.EPrAss lhs (S.EId member) rhs) typ) = do
     rcode <- cgenExp rhs
-    pos <- computeStructPosition lhs member
+    pos <- computeStructPosition lhs member typ
     _ <- store pos rcode
     return rcode
 cgenExp (S.ETyped e@(S.EPrAss _ _ _) _) = error $ "CODEGEN ERROR: unsupported struct assignment: " ++ show e ++ " ::: " ++ printTree e
@@ -379,8 +370,8 @@ cgenExp e@(S.EAss _ _) = error $ "CODEGEN ERROR: untyped expression not supporte
 
 
 convertDouble :: LAST.Operand -> Codegen (LAST.Operand)
-convertDouble o@(LAST.LocalReference (LAST.IntegerType _) _) = sitofp o double
-convertDouble o@(LAST.ConstantOperand (LASTC.Int _ _)) = sitofp o double
+convertDouble o@(LAST.LocalReference (LAST.IntegerType _) _) = sitofp o
+convertDouble o@(LAST.ConstantOperand (LASTC.Int _ _)) = sitofp o
 convertDouble o = return o
 
 
@@ -394,13 +385,15 @@ computeStructIndicies structs structtype member = [intZero, cons $ LASTC.Int 32 
                                   Just (_,ident) -> ident
 
 
-computeStructPosition :: S.Exp -> S.Id -> Codegen LAST.Operand
-computeStructPosition (S.ETyped (S.EId (S.Id structvarident)) (S.TypeId structtype)) memberid = do
+computeStructPosition :: S.Exp -> S.Id -> S.Type -> Codegen LAST.Operand
+computeStructPosition (S.ETyped (S.EId (S.Id structvarident)) (S.TypeId structtype)) memberid typ = do
     structs <- getStructs
     var <- getvar structvarident
-    getElementPtr var (computeStructIndicies structs structtype memberid)
-computeStructPosition (S.ETyped (S.EProj lhs (S.EId lhsmemberid)) (S.TypeId structtype)) memberid = do
+    getElementPtr var (computeStructIndicies structs structtype memberid) (convertType typ)
+
+computeStructPosition (S.ETyped (S.EProj lhs (S.EId lhsmemberid)) (S.TypeId structtype)) memberid typ = do
     structs <- getStructs
-    innerpos <- computeStructPosition lhs lhsmemberid
-    getElementPtr innerpos (computeStructIndicies structs structtype memberid)
-computeStructPosition e m = error $ "CODEGEN ERROR: unsupported struct position: " ++ show e ++ " ::: " ++ printTree e ++ " (at member " ++ printTree m ++ ")"
+    innerpos <- computeStructPosition lhs lhsmemberid typ
+    getElementPtr innerpos (computeStructIndicies structs structtype memberid) (convertType typ)
+
+computeStructPosition e m _ = error $ "CODEGEN ERROR: unsupported struct position: " ++ show e ++ " ::: " ++ printTree e ++ " (at member " ++ printTree m ++ ")"

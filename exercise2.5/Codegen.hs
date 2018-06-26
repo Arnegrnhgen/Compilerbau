@@ -224,12 +224,12 @@ fresh = do
   return $ i + 1
 
 
-local ::  LAST.Name -> LAST.Operand
-local = LAST.LocalReference int --TODO: add parameter for different types
+local :: LAST.Name -> LAST.Type -> LAST.Operand
+local name typ = LAST.LocalReference typ name
 
 
-externf :: LAST.Name -> LAST.Operand
-externf = LAST.ConstantOperand . LASTC.GlobalReference int --TODO: add parameter for different types
+externf :: LAST.Name -> LAST.Type -> LAST.Operand
+externf name typ = LAST.ConstantOperand $ LASTC.GlobalReference typ name
 
 
 assign :: String -> LAST.Operand -> Codegen ()
@@ -253,14 +253,30 @@ getsymtab = gets symtab
 restoresymtab :: SymbolTable -> Codegen ()
 restoresymtab t = modify $ \s -> s { symtab = t }
 
-instr :: LAST.Instruction -> Codegen LAST.Operand
-instr ins = do
+instr :: LAST.Type -> LAST.Instruction -> Codegen LAST.Operand
+instr typ ins = do
   n <- fresh
   let ref = LAST.UnName n
   blk <- current
   let i = stack blk
   modifyBlock (blk { stack = (ref LAST.:= ins) : i } )
-  return $ local ref
+  return $ local ref typ
+
+
+instr_i :: LAST.Instruction -> Codegen LAST.Operand
+instr_i = instr int
+
+
+instr_d :: LAST.Instruction -> Codegen LAST.Operand
+instr_d = instr double
+
+
+instr_v :: LAST.Instruction -> Codegen LAST.Operand
+instr_v = instr Codegen.void
+
+
+instr_b :: LAST.Instruction -> Codegen LAST.Operand
+instr_b = instr bool
 
 
 terminator :: LAST.Named LAST.Terminator -> Codegen (LAST.Named LAST.Terminator)
@@ -272,40 +288,39 @@ terminator trm = do
   --return trm
 
 
---TODO: adopt for integer operations
 fadd :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-fadd a b = instr $ LAST.FAdd LAST.NoFastMathFlags a b []
+fadd a b = instr_d $ LAST.FAdd LAST.NoFastMathFlags a b []
 fsub :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-fsub a b = instr $ LAST.FSub LAST.NoFastMathFlags a b []
+fsub a b = instr_d $ LAST.FSub LAST.NoFastMathFlags a b []
 fmul :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-fmul a b = instr $ LAST.FMul LAST.NoFastMathFlags a b []
+fmul a b = instr_d $ LAST.FMul LAST.NoFastMathFlags a b []
 fdiv :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-fdiv a b = instr $ LAST.FDiv LAST.NoFastMathFlags a b []
+fdiv a b = instr_d $ LAST.FDiv LAST.NoFastMathFlags a b []
 
 iadd :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-iadd a b = instr $ LAST.Add True False a b []
+iadd a b = instr_i $ LAST.Add True False a b []
 isub :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-isub a b = instr $ LAST.Sub True False a b []
+isub a b = instr_i $ LAST.Sub True False a b []
 imul :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-imul a b = instr $ LAST.Mul True False a b []
+imul a b = instr_i $ LAST.Mul True False a b []
 idiv :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-idiv a b = instr $ LAST.SDiv False a b []
+idiv a b = instr_i $ LAST.SDiv False a b []
 
 
 fcmp :: LASTFP.FloatingPointPredicate -> LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-fcmp cond a b = instr $ LAST.FCmp cond a b []
+fcmp cond a b = instr_d $ LAST.FCmp cond a b []
 
 
 icmp :: LASTIP.IntegerPredicate -> LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-icmp cond a b = instr $ LAST.ICmp cond a b []
+icmp cond a b = instr_i $ LAST.ICmp cond a b []
 
 
 bAnd :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-bAnd a b = instr $ LAST.And a b []
+bAnd a b = instr_b $ LAST.And a b []
 
 
 bOr :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-bOr a b = instr $ LAST.Or a b []
+bOr a b = instr_b $ LAST.Or a b []
 
 br :: LAST.Name -> Codegen (LAST.Named LAST.Terminator)
 br val = terminator $ LAST.Do $ LAST.Br val []
@@ -327,24 +342,26 @@ toArgs :: [LAST.Operand] -> [(LAST.Operand, [LASTA.ParameterAttribute])]
 toArgs = map (\x -> (x, []))
 
 
-call :: LAST.Operand -> [LAST.Operand] -> Codegen LAST.Operand
-call fn args = instr $ LAST.Call Nothing LASTCC.C [] (Right fn) (toArgs args) [] []
+call :: LAST.Operand -> [LAST.Operand] -> LAST.Type -> Codegen LAST.Operand
+call fn args typ = instr typ $ LAST.Call Nothing LASTCC.C [] (Right fn) (toArgs args) [] []
 
 
 alloca :: LAST.Type -> Codegen LAST.Operand
-alloca ty = instr $ LAST.Alloca ty Nothing 0 []
+alloca ty = instr ty $ LAST.Alloca ty Nothing 0 []
 
 
 store :: LAST.Operand -> LAST.Operand -> Codegen LAST.Operand
-store ptr val = instr $ LAST.Store False ptr val Nothing 0 []
+store ptr@(LAST.LocalReference typ _) val = instr typ $ LAST.Store False ptr val Nothing 0 []
+store _ _ = error "CODEGEN ERROR: store paramater must be a localreference"
 
 
 load :: LAST.Operand -> Codegen LAST.Operand
-load ptr = instr $ LAST.Load False ptr Nothing 0 []
+load ptr@(LAST.LocalReference typ _) = instr typ $ LAST.Load False ptr Nothing 0 []
+load _ = error "CODEGEN ERROR: load paramater must be a localreference"
 
 
-sitofp :: LAST.Operand -> LAST.Type -> Codegen LAST.Operand
-sitofp ptr typ = instr $ LAST.SIToFP ptr typ []
+sitofp :: LAST.Operand -> Codegen LAST.Operand
+sitofp ptr = instr_d $ LAST.SIToFP ptr double []
 
 
 cons :: LASTC.Constant -> LAST.Operand
@@ -352,8 +369,8 @@ cons = LAST.ConstantOperand
 
 
 phi :: LAST.Type -> [(LAST.Operand, LAST.Name)] -> Codegen LAST.Operand
-phi ty incoming = instr $ LAST.Phi ty incoming []
+phi ty incoming = instr ty $ LAST.Phi ty incoming []
 
 
-getElementPtr :: LAST.Operand -> [LAST.Operand] -> Codegen LAST.Operand
-getElementPtr addr indicies = instr $ LAST.GetElementPtr True addr indicies []
+getElementPtr :: LAST.Operand -> [LAST.Operand] -> LAST.Type -> Codegen LAST.Operand
+getElementPtr addr indicies typ = instr typ $ LAST.GetElementPtr True addr indicies []
