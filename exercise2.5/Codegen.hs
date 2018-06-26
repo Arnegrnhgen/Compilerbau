@@ -330,12 +330,8 @@ cbr :: LAST.Operand -> LAST.Name -> LAST.Name -> Codegen (LAST.Named LAST.Termin
 cbr cond tr fl = terminator $ LAST.Do $ LAST.CondBr cond tr fl []
 
 
-ret :: LAST.Operand -> Codegen (LAST.Named LAST.Terminator)
-ret val = terminator $ LAST.Do $ LAST.Ret (Just val) []
-
-
-retVoid :: Codegen (LAST.Named LAST.Terminator)
-retVoid = terminator $ LAST.Do $ LAST.Ret Nothing []
+ret :: Maybe LAST.Operand -> Codegen (LAST.Named LAST.Terminator)
+ret val = terminator $ LAST.Do $ LAST.Ret val []
 
 
 toArgs :: [LAST.Operand] -> [(LAST.Operand, [LASTA.ParameterAttribute])]

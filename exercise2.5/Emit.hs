@@ -52,19 +52,17 @@ codegenTop structs (S.DFun rettyp (S.Id ident) args stmts) = define (convertType
         _ <- store var (local (LAST.Name ident') (convertType typ'))
         assign ident' var
       cgenStmts stmts
-      case rettyp of
-        S.Type_void -> retVoid
-        _ -> ret $ defaultValue rettyp
+      ret $ defaultValue rettyp
 codegenTop _ (S.DStruct (S.Id ident) fields) = structDefine ident types
   where
     types = map (\(S.FDecl typ _) -> convertType typ) fields
 
 
-defaultValue :: S.Type -> LAST.Operand
-defaultValue S.Type_bool = false
-defaultValue S.Type_int = intZero
-defaultValue S.Type_double = doubleZero
-defaultValue S.Type_void = error $ "CODEGEN ERROR: should not happen"
+defaultValue :: S.Type -> Maybe LAST.Operand
+defaultValue S.Type_bool = Just false
+defaultValue S.Type_int = Just intZero
+defaultValue S.Type_double = Just doubleZero
+defaultValue S.Type_void = Nothing
 defaultValue (S.TypeId _) = error $ "CODEGEN ERROR: missing return in function returning a struct"
 
 cgenStmts :: [S.Stm] -> Codegen ()
@@ -73,7 +71,7 @@ cgenStmts list = mapM_ cgenStmt list
 cgenStmt :: S.Stm -> Codegen ()
 cgenStmt (S.SReturn e) = do
                             ecode <- cgenExp e
-                            _ <- ret ecode
+                            _ <- ret $ Just ecode
                             return ()
 cgenStmt (S.SDecls typ ids) = forM_ ids $ \(S.Id ident) -> do
                                     var <- alloca (convertType typ)
