@@ -3,7 +3,7 @@ all:
 	happy -gca ParCPP.y
 	alex -g LexCPP.x
 	stack build
-	ln -f -s `stack exec which lab3` lab3
+	./link.sh
 
 clean:
 	rm -f lab3
