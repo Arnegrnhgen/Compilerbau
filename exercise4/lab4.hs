@@ -1,25 +1,14 @@
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 
---import AbsCPP
---import LexCPP
-import ParCPP
-import ErrM
+import ParCPP (pProgram, myLexer)
+import ErrM (Err(..))
 
-import System.IO
+import System.IO (hPutStrLn, stderr)
 
-import TypeChecker
-import Preprocessor
-import Codegen
-import Emit
-
-import qualified LLVM.AST as LAST
---import qualified LLVM.Module as LMOD
-
--- driver
-
-initModule :: LAST.Module
-initModule = emptyModule "codegen"
+import TypeChecker (typecheck)
+import Preprocessor (preprocess)
+import Emit (codegen)
 
 
 check :: String -> IO () 
@@ -32,9 +21,8 @@ check s = case pProgram (myLexer s) of
                                         hPutStrLn stderr err
                                         exitFailure 
                           Ok (tree_a, structs) -> do
-                                         code <- codegen initModule tree_a structs
+                                         code <- codegen tree_a structs
                                          putStrLn code
-                                         return ()
 
 
 main :: IO ()

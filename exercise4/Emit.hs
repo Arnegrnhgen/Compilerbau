@@ -24,12 +24,12 @@ import qualified LLVM.AST.FloatingPointPredicate as LASTFP
 liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
-codegen :: LAST.Module -> S.Program -> Structs -> IO String
-codegen modo (S.PDefs fns) structs = LINTC.withContext $ \context ->
+codegen :: S.Program -> Structs -> IO String
+codegen (S.PDefs fns) structs = LINTC.withContext $ \context ->
   liftError $ LMOD.withModuleFromAST context newast $ \m -> LMOD.moduleLLVMAssembly m
   where
     modn    = mapM (codegenTop structs) fns
-    newast = runLLVM modo modn
+    newast = runLLVM (emptyModule "codegen") modn
 
 
 convertType :: S.Type -> LAST.Type
