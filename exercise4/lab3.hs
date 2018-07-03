@@ -9,7 +9,7 @@ import ErrM
 import System.IO
 
 import TypeChecker
---import Interpreter
+import Preprocessor
 import Codegen
 import Emit
 
@@ -37,13 +37,9 @@ check s = case pProgram (myLexer s) of
                                          return ()
 
 
-preprocess :: String -> IO String
-preprocess = undefined
-
-
 main :: IO ()
 main = do args <- getArgs
           case args of
-            [file] -> readFile file >>= preprocess >>= check
+            [file] -> readFile file >>= preprocess >>= putStrLn --TODO: check
             _      -> do putStrLn "Usage: lab3 <SourceFile>"
                          exitFailure

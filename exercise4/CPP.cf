@@ -66,7 +66,6 @@ token Id (letter (letter | digit | '_')*) ;
 
 separator nonempty Id "," ;
 
-comment "#" ;
 comment "//" ;
 comment "/*" "*/" ;
 
