@@ -6,7 +6,7 @@ all:
 	./link.sh
 
 clean:
-	rm -f lab3
+	rm -f lab4
 	stack clean
 
 distclean: clean
