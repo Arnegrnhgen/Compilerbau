@@ -40,7 +40,7 @@ preprocess s = do
     let fileLines = lines s
     --error $ show $ map trim fileLines
     --return $ evalState (preprocess_lines (map trim fileLines)) initPPState
-    return $ show $ evalPPState $ preprocess_lines (map trim fileLines)
+    return $ result $ evalPPState $ preprocess_lines (map trim fileLines)
 
 
 replaceM :: String -> (String, String) -> String
@@ -63,6 +63,7 @@ preprocess_lines (x:xs) = do
                   preprocess_lines xs
         otherwise -> do line <- modifyNormalLine x
                         appendString line
+                        appendString "\n"
                         rest <- preprocess_lines xs
                         return ()
 
