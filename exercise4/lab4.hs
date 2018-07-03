@@ -41,5 +41,5 @@ main :: IO ()
 main = do args <- getArgs
           case args of
             [file] -> readFile file >>= preprocess >>= putStrLn --TODO: check
-            _      -> do putStrLn "Usage: lab3 <SourceFile>"
+            _      -> do putStrLn "Usage: lab4 <SourceFile>"
                          exitFailure

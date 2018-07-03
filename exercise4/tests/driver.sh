@@ -2,7 +2,7 @@
 
 set -eu
 
-CMD=../lab3
+CMD=../lab4
 
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")

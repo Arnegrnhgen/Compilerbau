@@ -13,6 +13,6 @@ ParCPP.y
 PrintCPP.hs
 SkelCPP.hs
 TestCPP.hs
-lab3
+lab4
 
 testsuite/progs-test-lab2

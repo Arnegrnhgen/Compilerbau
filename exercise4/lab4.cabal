@@ -1,4 +1,4 @@
-name:                lab3
+name:                lab4
 version:             0.0.1.0
 synopsis:            Haskell port of LLVM Kaleidoscope tutorial
 description:         Port of the Kaleidoscope tutorial for Haskell and LLVM
@@ -12,9 +12,9 @@ Category:            Compilers
 build-type:          Simple
 cabal-version:       >=1.10
 
-executable lab3
+executable lab4
   default-language:    Haskell2010
-  main-is:             lab3.hs
+  main-is:             lab4.hs
   other-modules:
     AbsCPP
     Codegen
@@ -38,7 +38,5 @@ executable lab3
     , transformers         >= 0.3.0.0 && < 0.6
     , array
     , text
-    , regex
-    , regex-base
     , regex-compat
   hs-source-dirs:      .

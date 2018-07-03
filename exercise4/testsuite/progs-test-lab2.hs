@@ -22,7 +22,7 @@ import System.IO.Unsafe
 -- Executable name
 -- TODO: make an option
 --EXEC_NAME :: String
-executable_name = "lab3"
+executable_name = "lab4"
 
 
 {-# NOINLINE doDebug #-}
@@ -43,7 +43,7 @@ listCCFiles dir =
 
 
 welcome :: IO ()
-welcome = do putStrLn $ "This is the test program for Programming Languages Lab 3"
+welcome = do putStrLn $ "This is the test program for Programming Languages Lab 4"
 
 
 runMake :: FilePath -> IO ()
@@ -114,7 +114,7 @@ parseArgs ["-debug",cfFile] =
     do writeIORef doDebug True
        return cfFile
 parseArgs [cfFile] = return cfFile
-parseArgs _ = do hPutStrLn stderr "Usage: progs-test-lab3 <interpreter code directory>"
+parseArgs _ = do hPutStrLn stderr "Usage: progs-test-lab4 <interpreter code directory>"
                  exitFailure
 
 mainOpts :: FilePath -> IO ()
