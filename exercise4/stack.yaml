@@ -1,0 +1,7 @@
+resolver: lts-8.13
+packages:
+- '.'
+extra-deps:
+- llvm-hs-4.0.1.0
+ghc-options:
+    "*": -Wall
