@@ -4,21 +4,21 @@ module Preprocessor where
 
 import Data.Char (isSpace)
 import Data.List (isPrefixOf)
-import qualified Data.Map as Map
-import Control.Monad.State
-import Text.Regex
+--import qualified Data.Map as Map
+import Control.Monad.State (State, MonadState, gets, modify, execState)
+import Text.Regex (mkRegex, subRegex, matchRegex)
 
 
 data PPState = PPState {
     definitions :: [(String, String)] ,
-    ifdefs      :: [String] ,
+    --ifdefs      :: [String] ,
     result      :: String
     --TODO: map for macros, e.g. max
 } deriving (Show,Read,Eq,Ord)
 
+
 newtype PPSTATE a = PPSTATE { runPPState :: State PPState a }
   deriving (Functor, Applicative, Monad, MonadState PPState )
-
 
 
 appendString :: String -> PPSTATE ()
@@ -28,7 +28,7 @@ appendString s = do
 
 
 initPPState :: PPState
-initPPState = PPState [] [] []
+initPPState = PPState [] []
 
 
 evalPPState :: PPSTATE a -> PPState
@@ -54,6 +54,7 @@ modifyNormalLine s = do
     defs <- gets definitions
     return $ foldl replaceM s defs
 
+
 preprocess_lines :: [String] -> PPSTATE ()
 preprocess_lines [] = return ()
 preprocess_lines ([]:xs) = preprocess_lines xs
@@ -61,12 +62,10 @@ preprocess_lines (x:xs) = do
     case head x of
         '#' -> do parseDirective x
                   preprocess_lines xs
-        otherwise -> do line <- modifyNormalLine x
-                        appendString line
-                        appendString "\n"
-                        rest <- preprocess_lines xs
-                        return ()
-
+        _ -> do line <- modifyNormalLine x
+                appendString line
+                appendString "\n"
+                preprocess_lines xs
 
 
 trim :: String -> String
@@ -76,22 +75,22 @@ trim = f . f
 
 parseDirective :: String -> PPSTATE ()
 parseDirective dir = do
-    if "#define " `isPrefixOf` dir then addDefine dir else
-        if "#include " `isPrefixOf` dir then includeFile dir else
+    if "#define " `isPrefixOf` dir then procDefine dir else
+        if "#include " `isPrefixOf` dir then procInclude dir else
             if "#ifdef " `isPrefixOf` dir then procIfdef dir else
                 if "#endif " `isPrefixOf` dir then procEndif dir else
                     error $ "Invalid pp directive: " ++ dir
 
 
-addDefine :: String -> PPSTATE ()
-addDefine s = do
+procDefine :: String -> PPSTATE ()
+procDefine s = do
     defs <- gets definitions
     let r = mkRegex "#define\\s+([^(\\s]+)((\\s+(.*))|$)"
     case matchRegex r s of
         Nothing -> error $ "Invalid1 #define: " ++ s
         Just x -> case length x of
-                    4 -> modify $ \s -> s { definitions = ((head x), (head $ tail $ tail $ tail x)) : defs }
-                    otherwise -> error $ "Invalid2 #define (" ++ show (length x) ++ "): " ++ show x
+                    4 -> modify $ \m -> m { definitions = ((head x), (head $ tail $ tail $ tail x)) : defs }
+                    _ -> error $ "Invalid2 #define (" ++ show (length x) ++ "): " ++ show x
 --TODO: replace a with 3 in '#define b a'
 --TODO: macros, e.g. '#define max(a,b) a'
 
@@ -104,5 +103,5 @@ procEndif :: String -> PPSTATE ()
 procEndif = undefined
 
 
-includeFile :: String -> PPSTATE ()
-includeFile = undefined
+procInclude :: String -> PPSTATE ()
+procInclude = undefined
