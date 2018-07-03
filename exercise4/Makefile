@@ -2,7 +2,8 @@ all:
 	bnfc CPP.cf
 	happy -gca ParCPP.y
 	alex -g LexCPP.x
-	stack build
+	rm ParCPP.y LexCPP.x
+	stack build --ghc-options -Wall
 	./link.sh
 
 clean:
