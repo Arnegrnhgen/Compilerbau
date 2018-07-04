@@ -41,8 +41,8 @@ preprocess :: String -> FilePath -> IO String
 preprocess s p = do
     let fileLines = lines s
     let state = execStateT (preprocessLines (map trim fileLines)) (initPPState p)
-    s1 <- state
-    putStrLn (show s1)
+    --s1 <- state
+    --putStrLn (show s1)
     (liftM result) state
 
 
@@ -73,7 +73,13 @@ func (Err _) = error "Lexer error"
 
 searchAndReplace :: String -> (String, Macro) -> StateT PPState IO String
 searchAndReplace s (macroname, macro) = do
-    let r = mkRegex (macroname ++ "\\(([a-zA-Z0-9_,]*)\\)")
+    let r = mkRegex ("^(.*)" ++ macroname ++ "\\(([a-zA-Z0-9_,]*)\\)(.*)$")
+    case matchRegex r s of
+        Nothing -> return s
+        Just x -> do
+            let rawargs = x !! 1
+            let args = map trim $ splitOn "," rawargs
+            return $ (x !! 0) ++ applyMacro macro args ++ (x !! 2)
 
 
 modifyNormalLine :: String -> StateT PPState IO ()
