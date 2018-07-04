@@ -5,7 +5,7 @@ module Preprocessor where
 import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import qualified Data.Map as Map
-import Control.Monad.State (State, StateT, MonadState, MonadIO, runStateT, execStateT, gets, modify, execState, evalState, lift, liftIO, liftM)
+import Control.Monad.State (StateT, execStateT, gets, modify, lift, liftM, when, foldM, liftIO)
 import Text.Regex (mkRegex, subRegex, matchRegex)
 import ParCPP (myLexer)
 import LexCPP (Token(..), Tok(..))
@@ -14,7 +14,7 @@ import LexCPP (Token(..), Tok(..))
 
 data PPState = PPState {
     definitions :: Map.Map String String ,
-    --ifdefs      :: [String] ,
+    ifdefs      :: [String] ,
     result      :: String ,
     path        :: FilePath
     --TODO: map for macros, e.g. max
@@ -32,7 +32,7 @@ appendString s = do
 
 
 initPPState :: FilePath -> PPState
-initPPState p = PPState Map.empty [] p
+initPPState p = PPState Map.empty [] [] p
 
 
 --evalPPState :: State PPState a -> State PPState
@@ -88,12 +88,17 @@ modifyNormalLine s = do
 preprocessLines :: [String] -> StateT PPState IO ()
 preprocessLines [] = return ()
 preprocessLines ([]:xs) = preprocessLines xs
-preprocessLines (x:xs) = case head x of
-        '#' -> do parseDirective x
-                  preprocessLines xs
-        _ -> do modifyNormalLine x
-                appendString "\n"
-                preprocessLines xs
+preprocessLines (x:xs) = do
+    parseConditional x
+    sc <- shouldCompile
+    if sc then case head x of
+            '#' -> do parseDirective x
+                      preprocessLines xs
+            _ -> do modifyNormalLine x
+                    appendString "\n"
+                    preprocessLines xs
+    else
+        preprocessLines xs
 
 
 trim :: String -> String
@@ -101,20 +106,23 @@ trim = f . f
    where f = reverse . dropWhile isSpace
 
 
+parseConditional :: String -> StateT PPState IO ()
+parseConditional dir
+    | "#ifdef" `isPrefixOf` dir = procIfdef dir
+    | "#endif" `isPrefixOf` dir = procEndif dir
+    | otherwise = return ()
 parseDirective :: String -> StateT PPState IO ()
 parseDirective dir
-    | "#define " `isPrefixOf` dir = procDefine dir
-    | "#include " `isPrefixOf` dir = procInclude dir
-    | "#ifdef " `isPrefixOf` dir = procIfdef dir
-    | "#endif " `isPrefixOf` dir = procEndif dir
-    | otherwise = error $ "Invalid pp directive: " ++ dir
+    | "#define" `isPrefixOf` dir = procDefine dir
+    | "#include" `isPrefixOf` dir = procInclude dir
+    | otherwise = return ()
 
 
 procDefine :: String -> StateT PPState IO ()
 procDefine s = do
     defs <- gets definitions
     --REMARK: \s in [] does not work
-    let r = mkRegex "#define\\s+([^(\\ \\t]+)((\\s+(.*))|$)"
+    let r = mkRegex "#define\\s+(\\w+)((\\s+(.*))|$)"
     case matchRegex r s of
         Nothing -> error $ "Invalid1 #define: " ++ s
         Just x -> case length x of
@@ -125,12 +133,37 @@ procDefine s = do
 --TODO: macros, e.g. '#define max(a,b) a'
 
 
+isDefined :: Bool -> String -> StateT PPState IO Bool
+isDefined False _ = return False
+isDefined True s = do
+    defs <- gets definitions
+    return $ Map.member s defs
+
+
+shouldCompile :: StateT PPState IO Bool
+shouldCompile = do
+    st <- gets ifdefs
+    foldM isDefined True st
+
+
 procIfdef :: String -> StateT PPState IO ()
-procIfdef = undefined
+procIfdef s = do
+    let r = mkRegex "#ifdef\\s+(\\w+)\\s*$"
+    case matchRegex r s of
+        Nothing -> error $ "Invalid1 #ifdef: " ++ s
+        Just x -> case length x of
+            1 -> do st <- gets ifdefs
+                    modify $ \m -> m { ifdefs = (head x) : st }
+            _ -> error $ "Invalid2 #ifdef (" ++ show (length x) ++ "): " ++ show x
 
 
 procEndif :: String -> StateT PPState IO ()
-procEndif = undefined
+procEndif _ = do
+    st <- gets ifdefs
+    case st of
+        [] -> error "Invalid endif"
+        _ -> modify $ \m -> m { ifdefs = tail st }
+
 
 
 procInclude :: String -> StateT PPState IO ()
@@ -140,7 +173,7 @@ procInclude s = do
         Nothing -> error $ "Invalid1 #include: " ++ s
         Just x -> case length x of
             1 -> do
-                p <- gets path
+                _ <- gets path
                 --fileContent <- lift (readFile (append p (FilePath (head x)))) TODO append
                 fileContent <- lift (readFile (head x))
                 preprocessLines (lines fileContent)
