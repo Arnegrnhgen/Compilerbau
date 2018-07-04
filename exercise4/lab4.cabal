@@ -39,4 +39,8 @@ executable lab4
     , array
     , text
     , regex-compat
+    , path
+ --   , system-filepath
+    , filepath
+
   hs-source-dirs:      .

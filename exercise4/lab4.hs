@@ -28,6 +28,9 @@ check s = case pProgram (myLexer s) of
 main :: IO ()
 main = do args <- getArgs
           case args of
-            [file] -> readFile file >>= preprocess >>= check
+            [file] -> do
+                fileContent <- readFile file
+                ppContent <- preprocess fileContent file -- TODO: directory file
+                check ppContent
             _      -> do putStrLn "Usage: lab4 <SourceFile>"
                          exitFailure
