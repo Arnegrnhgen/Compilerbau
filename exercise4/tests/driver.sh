@@ -13,7 +13,7 @@ echo "Starting tests..."
 for filename in ./test_**.cc; do
 	echo -n "Running test $filename..."
 	
-	clang "$filename" -o "$filename.clang.bin"
+	clang -Wno-macro-redefined "$filename" -o "$filename.clang.bin"
 	if "$filename.clang.bin"; then
 		ref_val=0
 	else
