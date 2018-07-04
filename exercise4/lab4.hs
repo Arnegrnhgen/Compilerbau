@@ -9,6 +9,7 @@ import System.IO (hPutStrLn, stderr)
 import TypeChecker (typecheck)
 import Preprocessor (preprocess)
 import Emit (codegen)
+import System.FilePath.Posix (takeDirectory)
 
 
 check :: String -> IO () 
@@ -30,7 +31,7 @@ main = do args <- getArgs
           case args of
             [file] -> do
                 fileContent <- readFile file
-                ppContent <- preprocess fileContent file -- TODO: directory file
+                ppContent <- preprocess fileContent (takeDirectory file) -- TODO: directory file
                 check ppContent
             _      -> do putStrLn "Usage: lab4 <SourceFile>"
                          exitFailure

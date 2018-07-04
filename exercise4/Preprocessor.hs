@@ -5,11 +5,11 @@ module Preprocessor where
 import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import qualified Data.Map as Map
-import Control.Monad.State (StateT, execStateT, gets, modify, lift, liftM, when, foldM, liftIO)
+import Control.Monad.State (StateT, execStateT, gets, modify, lift, liftM, foldM)
 import Text.Regex (mkRegex, subRegex, matchRegex)
 import ParCPP (myLexer)
 import LexCPP (Token(..), Tok(..))
---import Filesystem.Path (append)
+import System.FilePath.Posix (FilePath, combine)
 
 
 data PPState = PPState {
@@ -18,7 +18,7 @@ data PPState = PPState {
     result      :: String ,
     path        :: FilePath
     --TODO: map for macros, e.g. max
-} deriving (Show,Read,Eq,Ord)
+} deriving (Show,Eq,Ord)
 
 
 --newtype PPSTATE a = PPSTATE { runPPState :: State PPState a }
@@ -173,8 +173,8 @@ procInclude s = do
         Nothing -> error $ "Invalid1 #include: " ++ s
         Just x -> case length x of
             1 -> do
-                _ <- gets path
-                --fileContent <- lift (readFile (append p (FilePath (head x)))) TODO append
-                fileContent <- lift (readFile (head x))
+                p <- gets path
+                fileContent <- lift $ readFile $ combine p $ head x
+                --fileContent <- lift (readFile (head x))
                 preprocessLines (lines fileContent)
             _ -> error $ "Invalid2 #include (" ++ show (length x) ++ "): " ++ show x

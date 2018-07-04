@@ -40,7 +40,7 @@ executable lab4
     , text
     , regex-compat
     , path
- --   , system-filepath
+    , system-filepath
     , filepath
 
   hs-source-dirs:      .
