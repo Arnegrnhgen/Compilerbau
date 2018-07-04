@@ -6,7 +6,7 @@ import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import qualified Data.Map as Map
 import Control.Monad.State (StateT, execStateT, gets, modify, lift, liftM, foldM)
-import Text.Regex (mkRegex, subRegex, matchRegex)
+import Text.Regex (mkRegex, matchRegex)
 import ParCPP (myLexer)
 import LexCPP (Token(..), Tok(..))
 import System.FilePath.Posix (FilePath, combine)
@@ -18,11 +18,7 @@ data PPState = PPState {
     result      :: String ,
     path        :: FilePath
     --TODO: map for macros, e.g. max
-} deriving (Show,Eq,Ord)
-
-
---newtype PPSTATE a = PPSTATE { runPPState :: State PPState a }
---  deriving (Functor, Applicative, Monad, MonadState PPState )
+} deriving (Show,Read,Eq,Ord)
 
 
 appendString :: String -> StateT PPState IO ()
@@ -35,23 +31,11 @@ initPPState :: FilePath -> PPState
 initPPState p = PPState Map.empty [] [] p
 
 
---evalPPState :: State PPState a -> State PPState
---evalPPState m = execState (runPPState m) initPPState
-
-
 preprocess :: String -> FilePath -> IO String
 preprocess s p = do
     let fileLines = lines s
-    --error $ show $ map trim fileLines
     let state = execStateT (preprocessLines (map trim fileLines)) (initPPState p)
     (liftM result) state
-    --return $ result $ evalPPState $ preprocessLines (map trim fileLines)
-
-
-replaceM :: String -> (String, String) -> String
-replaceM s (search,replace) = do
-    let r = mkRegex ("(\\W|^)" ++ search ++ "(\\W|$)")
-    subRegex r s ("\\1 " ++ replace ++ "\\2") --TODO remove space
 
 
 replaceStr :: String -> StateT PPState IO String
@@ -165,7 +149,6 @@ procEndif _ = do
         _ -> modify $ \m -> m { ifdefs = tail st }
 
 
-
 procInclude :: String -> StateT PPState IO ()
 procInclude s = do
     let r = mkRegex "#include\\s+\"(.+)\"$"
@@ -175,6 +158,5 @@ procInclude s = do
             1 -> do
                 p <- gets path
                 fileContent <- lift $ readFile $ combine p $ head x
-                --fileContent <- lift (readFile (head x))
                 preprocessLines (lines fileContent)
             _ -> error $ "Invalid2 #include (" ++ show (length x) ++ "): " ++ show x
