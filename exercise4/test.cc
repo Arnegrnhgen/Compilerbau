@@ -1,7 +1,5 @@
-
-#include "test.h"
+#define random(a,b) a
 
 int main() {
-	return A; // a   a    a aa ab ba
-	
+	return random(3,4);
 }

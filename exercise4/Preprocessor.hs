@@ -6,18 +6,24 @@ import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import qualified Data.Map as Map
 import Control.Monad.State (StateT, execStateT, gets, modify, lift, liftM, foldM)
-import Text.Regex (mkRegex, matchRegex)
+import Text.Regex (mkRegex, matchRegex, subRegex)
 import ParCPP (myLexer)
 import LexCPP (Token(..), Tok(..))
 import System.FilePath.Posix (FilePath, combine)
+import Data.List.Split (splitOn)
 
+
+data Macro = Macro {
+    params  :: [String] ,
+    replace :: String
+} deriving (Show,Read,Eq,Ord)
 
 data PPState = PPState {
     definitions :: Map.Map String String ,
     ifdefs      :: [String] ,
     result      :: String ,
-    path        :: FilePath
-    --TODO: map for macros, e.g. max
+    path        :: FilePath ,
+    macros      :: Map.Map String Macro
 } deriving (Show,Read,Eq,Ord)
 
 
@@ -28,13 +34,15 @@ appendString s = do
 
 
 initPPState :: FilePath -> PPState
-initPPState p = PPState Map.empty [] [] p
+initPPState p = PPState Map.empty [] [] p Map.empty
 
 
 preprocess :: String -> FilePath -> IO String
 preprocess s p = do
     let fileLines = lines s
     let state = execStateT (preprocessLines (map trim fileLines)) (initPPState p)
+    s1 <- state
+    putStrLn (show s1)
     (liftM result) state
 
 
@@ -63,11 +71,17 @@ func (PT _ tk) = do
 func (Err _) = error "Lexer error"
 
 
+searchAndReplace :: String -> (String, Macro) -> StateT PPState IO String
+searchAndReplace s (macroname, macro) = do
+    let r = mkRegex (macroname ++ "\\(([a-zA-Z0-9_,]*)\\)")
+
+
 modifyNormalLine :: String -> StateT PPState IO ()
 modifyNormalLine s = do
-    let tks = myLexer s
+    ms <- gets macros
+    s1 <- foldM searchAndReplace s (Map.toList ms)
+    let tks = myLexer s1
     mapM_ func tks
-
 
 preprocessLines :: [String] -> StateT PPState IO ()
 preprocessLines [] = return ()
@@ -104,17 +118,45 @@ parseDirective dir
 
 procDefine :: String -> StateT PPState IO ()
 procDefine s = do
-    defs <- gets definitions
     --REMARK: \s in [] does not work
     let r = mkRegex "#define\\s+(\\w+)((\\s+(.*))|$)"
     case matchRegex r s of
-        Nothing -> error $ "Invalid1 #define: " ++ s
+        Nothing -> procDefineMacro s
         Just x -> case length x of
             4 -> do rstr <- replaceStr (x !! 3)
+                    defs <- gets definitions
                     modify $ \m -> m { definitions = Map.insert (head x) rstr defs }
                     return ()
-            _ -> error $ "Invalid2 #define (" ++ show (length x) ++ "): " ++ show x
---TODO: macros, e.g. '#define max(a,b) a'
+            _ -> error $ "Invalid1 #define (" ++ show (length x) ++ "): " ++ show x
+
+
+procDefineMacro :: String -> StateT PPState IO ()
+procDefineMacro s = do
+    let r = mkRegex "#define\\s+(\\w+)\\(([a-zA-Z0-9_,]*)\\)\\s+(.+)$"
+    case matchRegex r s of
+        Nothing -> error $ "Invalid2 #define: " ++ s
+        Just x -> case length x of
+            3 -> do
+                let name = x !! 0
+                let rawparams = x !! 1
+                let replaces = x !! 2
+                let parameters = map trim $ splitOn "," rawparams
+
+                ms <- gets macros
+                modify $ \m -> m { macros = Map.insert name (Macro parameters replaces) ms }
+                return ()
+
+            _ -> error $ "Invalid3 #define (" ++ show (length x) ++ "): " ++ show x
+
+
+replaceM :: String -> (String, String) -> String
+replaceM s (search,replaces) = do
+    let r = mkRegex ("(\\W|^)" ++ search ++ "(\\W|$)")
+    subRegex r s ("\\1 " ++ replaces ++ "\\2") --TODO remove space
+
+
+applyMacro :: Macro -> [String] -> String
+applyMacro (Macro ps r) xs = foldl replaceM r (zip ps xs)
 
 
 isDefined :: Bool -> String -> StateT PPState IO Bool

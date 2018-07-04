@@ -42,5 +42,5 @@ executable lab4
     , path
     , system-filepath
     , filepath
-
+    , split
   hs-source-dirs:      .
